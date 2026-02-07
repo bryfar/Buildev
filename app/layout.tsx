@@ -7,7 +7,7 @@ import './globals.css'
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'AetherSite Builder Pro',
+  title: 'Buildev',
   description: 'Professional AI-Powered Responsive Web Builder',
   generator: 'v0.app',
   viewport: {

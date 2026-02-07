@@ -30,9 +30,12 @@ export default function Dashboard() {
       {/* Header */}
       <header className="border-b border-[#2a2a2a] bg-[#1e1e1e] px-8 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">AetherSite Builder Pro</h1>
-            <p className="text-[#999] mt-1">Professional AI-Powered Web Builder</p>
+          <div className="flex">
+            <img
+          src="/logo.svg"
+          alt="Logo"
+          className="h-10 w-auto"
+        />
           </div>
           <button
             onClick={() => setShowNewForm(true)}

@@ -20,8 +20,13 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
 
   return (
     <div className="h-16 bg-[#1e1e1e] border-b border-[#2a2a2a] flex items-center px-6 gap-6">
-      {/* Left: Back, Undo/Redo, Project Name */}
+      {/* Left: Logo, Back, Undo/Redo, Project Name */}
       <div className="flex items-center gap-4">
+        <img
+          src="/union.svg"
+          alt="Logo"
+          className="h-10 w-auto"
+        />
         <button
           onClick={handleBack}
           className="text-[#999] hover:text-white transition-colors p-2 hover:bg-[#2a2a2a] rounded"
