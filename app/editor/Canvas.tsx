@@ -4,7 +4,19 @@ import React from "react"
 
 import { useAppStore } from '@/lib/store';
 import { useEffect, useRef, useState } from 'react';
-import { ZoomIn, ZoomOut, Grid3x3, Move, Palette } from 'lucide-react';
+import { Move, Palette } from 'lucide-react';
+import {
+  ZoomIn,
+  ZoomOut,
+  Grid3x3,
+  MousePointer2,
+  Hash,
+  Type,
+  Component,
+  Settings,
+  LayoutGrid,
+  Code,
+} from 'lucide-react';
 
 export default function Canvas() {
   const {
@@ -96,7 +108,7 @@ export default function Canvas() {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0f0f0f] overflow-hidden">
+    <div className="flex-1 flex flex-col bg-[#0f0f0f] overflow-hidden relative">
       {/* Toolbar */}
       <div className="h-12 border-b border-[#2a2a2a] bg-[#1e1e1e] flex items-center justify-between px-4">
         <div className="flex gap-2">
@@ -246,27 +258,36 @@ export default function Canvas() {
       </div>
 
       {/* Bottom Toolbar */}
-      <div className="h-16 bg-[#1e1e1e] border-t border-[#2a2a2a] flex items-center justify-center gap-2 px-4">
-        <div className="flex gap-2 bg-[#0f0f0f] rounded-lg p-1">
-          <button className="px-4 py-2 text-sm font-medium text-white bg-[#2a2a2a] hover:bg-[#333] rounded transition-colors">
-            Select
-          </button>
-          <button className="px-4 py-2 text-sm font-medium text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
-            Frame
-          </button>
-          <button className="px-4 py-2 text-sm font-medium text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
-            Rectangle
-          </button>
-          <button className="px-4 py-2 text-sm font-medium text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
-            Circle
-          </button>
-          <button className="px-4 py-2 text-sm font-medium text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
-            Text
-          </button>
-          <button className="px-4 py-2 text-sm font-medium text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
-            Image
-          </button>
-        </div>
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 bg-[#1e1e1e] rounded-xl px-1.5 py-1.5 shadow-lg border border-[#2a2a2a]">
+        {/* Tool group */}
+        <button className="p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF] transition-colors" title="Select">
+          <MousePointer2 size={18} />
+        </button>
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Frame">
+          <Hash size={18} />
+        </button>
+
+        <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
+
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Text">
+          <Type size={18} />
+        </button>
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Components">
+          <Component size={18} />
+        </button>
+
+        <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
+
+        {/* Utility group */}
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Settings">
+          <Settings size={18} />
+        </button>
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Grid">
+          <LayoutGrid size={18} />
+        </button>
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Code">
+          <Code size={18} />
+        </button>
       </div>
     </div>
   );
