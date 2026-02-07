@@ -12,6 +12,7 @@ interface AppState extends EditorState {
   createProject: (name: string) => void;
   deleteProject: (id: string) => void;
   openProject: (id: string) => void;
+  updateProjectSettings: (settings: Partial<Pick<Project, 'name' | 'techStack' | 'animationEngine'>>) => void;
   
   // Pages
   createPage: (name: string) => void;
@@ -280,6 +281,23 @@ export const useAppStore = create<AppState>((set, get) => ({
         currentPage: project.pages[0],
       });
     }
+  },
+  
+  updateProjectSettings: (settings: Partial<Pick<Project, 'name' | 'techStack' | 'animationEngine'>>) => {
+    set((state) => {
+      if (!state.currentProject) return state;
+      
+      const updatedProject = {
+        ...state.currentProject,
+        ...settings,
+        updatedAt: new Date(),
+      };
+      
+      return {
+        currentProject: updatedProject,
+        projects: state.projects.map(p => p.id === updatedProject.id ? updatedProject : p),
+      };
+    });
   },
   
   // Page management

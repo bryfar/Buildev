@@ -6,6 +6,7 @@ import { useState } from "react";
 import LayersPanel from "./panels/LayersPanel";
 import AssetsPanel from "./panels/AssetsPanel";
 import AIAssistant from "./panels/AIAssistant";
+import ConfigPanel from "./panels/ConfigPanel";
 
 type PanelType = "layers" | "config" | "assets" | "ai";
 
@@ -65,7 +66,7 @@ export default function LeftSidebar() {
       {/* Panel Content */}
       <div className="flex-1 overflow-y-auto">
         {activePanel === "layers" && <LayersPanel />}
-        {activePanel === "config" && <AssetsPanel />}
+        {activePanel === "config" && <ConfigPanel />}
         {activePanel === "assets" && <AssetsPanel />}
         {activePanel === "ai" && <AIAssistant />}
       </div>

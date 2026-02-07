@@ -25,8 +25,8 @@ export default function EditorView() {
 
       {/* Main Editor Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar */}
-        {viewMode === 'design' && <LeftSidebar />}
+        {/* Left Sidebar - Always show */}
+        <LeftSidebar />
 
         {/* Canvas Area */}
         {viewMode === 'design' && <Canvas />}
@@ -37,7 +37,7 @@ export default function EditorView() {
           </div>
         )}
 
-        {/* Right Sidebar */}
+        {/* Right Sidebar - Only in design mode */}
         {viewMode === 'design' && <RightSidebar />}
       </div>
     </div>
