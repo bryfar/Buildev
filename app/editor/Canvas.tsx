@@ -14,6 +14,7 @@ import {
   Type,
   Square,
   MessageCircle,
+  Component,
 } from 'lucide-react';
 
 export default function Canvas() {
@@ -32,6 +33,7 @@ export default function Canvas() {
     setActiveTool,
     addElement,
     updateElement,
+    saveAsComponent,
   } = useAppStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -278,9 +280,23 @@ export default function Canvas() {
         
         {/* Selection indicator */}
         {selectedElementId === element.id && (
-          <div className="absolute -top-6 left-0 bg-[#0D99FF] text-white text-[10px] px-2 py-0.5 rounded pointer-events-none font-semibold whitespace-nowrap z-20">
-            {element.name}
-          </div>
+          <>
+            <div className="absolute -top-6 left-0 bg-[#0D99FF] text-white text-[10px] px-2 py-0.5 rounded pointer-events-none font-semibold whitespace-nowrap z-20">
+              {element.name}
+            </div>
+            {/* Save as Component Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const componentName = prompt('Enter component name:', element.name) || element.name;
+                saveAsComponent(element.id, componentName);
+              }}
+              className="absolute -right-8 top-0 bg-[#0D99FF] hover:bg-[#0a7acc] text-white p-1.5 rounded shadow-lg transition-colors z-20 pointer-events-auto"
+              title="Save as Component"
+            >
+              <Component size={14} />
+            </button>
+          </>
         )}
       </div>
     );
