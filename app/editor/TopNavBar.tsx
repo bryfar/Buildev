@@ -3,7 +3,7 @@
 import { useAppStore } from '@/lib/store';
 import { ArrowLeft, RotateCcw, RotateCw, Play, Share2 } from 'lucide-react';
 
-type ViewMode = 'design' | 'prototype' | 'code' | 'preview';
+type ViewMode = 'design' | 'code' | 'preview';
 
 interface TopNavBarProps {
   viewMode: ViewMode;
@@ -48,7 +48,7 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
       {/* Center: Work Mode Switcher */}
       <div className="flex-1 flex justify-center">
         <div className="flex gap-1 bg-[#0f0f0f] rounded-lg p-1">
-          {(['design', 'prototype', 'code', 'preview'] as ViewMode[]).map((mode) => (
+          {(['design', 'code', 'preview'] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
