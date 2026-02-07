@@ -258,22 +258,22 @@ export default function Canvas() {
       {/* Bottom Toolbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 bg-[#1e1e1e] rounded-xl px-1.5 py-1.5 shadow-lg border border-[#2a2a2a]">
         {/* Tool group */}
-        <button className="p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF] transition-colors" title="Select">
+        <button className="p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]" title="Select">
           <MousePointer2 size={18} />
         </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Frame">
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Frame">
           <Hash size={18} />
         </button>
 
         <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
 
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Text">
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Text">
           <Type size={18} />
         </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Rectangle">
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Rectangle">
           <Square size={18} />
         </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Comments">
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Comments">
           <MessageCircle size={18} />
         </button>
       </div>
