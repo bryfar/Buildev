@@ -46,6 +46,10 @@ export interface SiteElement {
   // Hierarchy
   children?: SiteElement[];
   parentId?: string;
+  
+  // UI state
+  isExpanded?: boolean;
+  isVisible?: boolean;
 }
 
 export interface Page {
