@@ -1,13 +1,16 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
-import { ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Box, Type, Image, Circle, Square } from 'lucide-react';
+import { ChevronRight, ChevronDown, Eye, EyeOff, Trash2, Box, Type, Image, Circle, Square, Save } from 'lucide-react';
 import { SiteElement } from '@/lib/types';
 import { useState } from 'react';
 
 export default function LayersPanel() {
-  const { currentPage, selectedElementId, selectElement, deleteElement, updateElement } = useAppStore();
+  const { currentPage, selectedElementId, selectElement, deleteElement, updateElement, saveAsComponent } = useAppStore();
   const [expandedElements, setExpandedElements] = useState<Set<string>>(new Set());
+  const [showSaveDialog, setShowSaveDialog] = useState(false);
+  const [componentName, setComponentName] = useState('');
+  const [elementToSave, setElementToSave] = useState<string | null>(null);
 
   const toggleExpanded = (elementId: string) => {
     const newExpanded = new Set(expandedElements);
@@ -17,6 +20,21 @@ export default function LayersPanel() {
       newExpanded.add(elementId);
     }
     setExpandedElements(newExpanded);
+  };
+
+  const handleSaveAsComponent = (elementId: string) => {
+    setElementToSave(elementId);
+    setShowSaveDialog(true);
+    setComponentName('');
+  };
+
+  const confirmSaveComponent = () => {
+    if (elementToSave && componentName.trim()) {
+      saveAsComponent(elementToSave, componentName.trim());
+      setShowSaveDialog(false);
+      setComponentName('');
+      setElementToSave(null);
+    }
   };
 
   const getElementIcon = (type: string) => {
@@ -88,6 +106,16 @@ export default function LayersPanel() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  handleSaveAsComponent(element.id);
+                }}
+                className="p-0.5 text-[#999] hover:text-[#0D99FF] hover:bg-white/10 rounded"
+                title="Save as component"
+              >
+                <Save size={14} />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
                   updateElement(element.id, {
                     isVisible: !isVisible,
                   });
@@ -129,6 +157,45 @@ export default function LayersPanel() {
           <p className="text-xs text-[#666] text-center py-8">No elements yet</p>
         )}
       </div>
+
+      {/* Save Component Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSaveDialog(false)}>
+          <div className="bg-[#1e1e1e] border border-[#2a2a2a] rounded-lg p-6 w-80" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-white font-semibold mb-4">Save as Component</h3>
+            <input
+              type="text"
+              value={componentName}
+              onChange={(e) => setComponentName(e.target.value)}
+              placeholder="Component name..."
+              className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-[#666] focus:border-[#0D99FF] focus:outline-none mb-4"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  confirmSaveComponent();
+                } else if (e.key === 'Escape') {
+                  setShowSaveDialog(false);
+                }
+              }}
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowSaveDialog(false)}
+                className="flex-1 px-4 py-2 bg-[#0f0f0f] border border-[#2a2a2a] text-[#999] hover:text-white rounded text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmSaveComponent}
+                disabled={!componentName.trim()}
+                className="flex-1 px-4 py-2 bg-[#0D99FF] hover:bg-[#0a7acc] text-white rounded text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -29,6 +29,16 @@ interface AppState extends EditorState {
   setActiveBreakpoint: (breakpoint: BreakpointName) => void;
   setActiveTool: (tool: ActiveTool) => void;
   
+  // Color Palette
+  extractColorsFromCanvas: () => void;
+  addColor: (color: string) => void;
+  removeColor: (color: string) => void;
+  
+  // Reusable Components
+  saveAsComponent: (elementId: string, name: string) => void;
+  deleteComponent: (componentId: string) => void;
+  instantiateComponent: (componentId: string) => void;
+  
   // Breakpoints - Mobile-first approach
   initializeMobileFirstBreakpoints: () => void;
   getDefaultBreakpoints: () => Array<{name: BreakpointName; width: number}>;
@@ -46,6 +56,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   panY: 0,
   showGrid: true,
   projects: [],
+  colorPalette: [],
+  reusableComponents: [],
   
   // Project management
   createProject: (name: string) => {
@@ -424,6 +436,126 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setActiveTool: (tool: ActiveTool) => {
     set({ activeTool: tool });
+  },
+
+  // Color Palette Management
+  extractColorsFromCanvas: () => {
+    const state = get();
+    if (!state.currentPage) return;
+
+    const colors = new Set<string>();
+
+    // Recursive function to extract colors from elements
+    const extractColors = (elements: SiteElement[]) => {
+      elements.forEach(element => {
+        if (element.backgroundColor && element.backgroundColor !== 'transparent') {
+          colors.add(element.backgroundColor);
+        }
+        if (element.textColor) {
+          colors.add(element.textColor);
+        }
+        if (element.children && element.children.length > 0) {
+          extractColors(element.children);
+        }
+      });
+    };
+
+    extractColors(state.currentPage.elements);
+
+    set({ colorPalette: Array.from(colors) });
+  },
+
+  addColor: (color: string) => {
+    set((state) => {
+      if (!state.colorPalette.includes(color)) {
+        return { colorPalette: [...state.colorPalette, color] };
+      }
+      return state;
+    });
+  },
+
+  removeColor: (color: string) => {
+    set((state) => ({
+      colorPalette: state.colorPalette.filter(c => c !== color),
+    }));
+  },
+
+  // Reusable Components Management
+  saveAsComponent: (elementId: string, name: string) => {
+    const state = get();
+    if (!state.currentPage) return;
+
+    // Find element recursively
+    const findElement = (elements: SiteElement[]): SiteElement | null => {
+      for (const el of elements) {
+        if (el.id === elementId) return el;
+        if (el.children) {
+          const found = findElement(el.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const element = findElement(state.currentPage.elements);
+    if (!element) return;
+
+    // Create deep copy of element
+    const componentCopy = JSON.parse(JSON.stringify(element));
+
+    const newComponent = {
+      id: generateId(),
+      name,
+      element: componentCopy,
+      createdAt: new Date(),
+    };
+
+    set((state) => ({
+      reusableComponents: [...state.reusableComponents, newComponent],
+    }));
+  },
+
+  deleteComponent: (componentId: string) => {
+    set((state) => ({
+      reusableComponents: state.reusableComponents.filter(c => c.id !== componentId),
+    }));
+  },
+
+  instantiateComponent: (componentId: string) => {
+    const state = get();
+    const component = state.reusableComponents.find(c => c.id === componentId);
+    if (!component || !state.currentPage) return;
+
+    // Create new instance with new IDs
+    const generateNewIds = (element: SiteElement): SiteElement => {
+      const newElement = {
+        ...element,
+        id: generateId(),
+        x: element.x + 20, // Offset position
+        y: element.y + 20,
+      };
+
+      if (element.children) {
+        newElement.children = element.children.map(generateNewIds);
+      }
+
+      return newElement;
+    };
+
+    const newInstance = generateNewIds(component.element);
+
+    const updatedPage = {
+      ...state.currentPage,
+      elements: [...state.currentPage.elements, newInstance],
+    };
+
+    set({
+      currentPage: updatedPage,
+      currentProject: state.currentProject ? {
+        ...state.currentProject,
+        pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+      } : null,
+    });
   },
 
   // Mobile-first breakpoints initialization

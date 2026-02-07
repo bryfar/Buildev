@@ -14,6 +14,7 @@ import {
   Type,
   Square,
   MessageCircle,
+  Component,
 } from 'lucide-react';
 
 export default function Canvas() {
@@ -32,6 +33,7 @@ export default function Canvas() {
     setActiveTool,
     addElement,
     updateElement,
+    saveAsComponent,
   } = useAppStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -278,9 +280,23 @@ export default function Canvas() {
         
         {/* Selection indicator */}
         {selectedElementId === element.id && (
-          <div className="absolute -top-6 left-0 bg-[#0D99FF] text-white text-[10px] px-2 py-0.5 rounded pointer-events-none font-semibold whitespace-nowrap z-20">
-            {element.name}
-          </div>
+          <>
+            <div className="absolute -top-6 left-0 bg-[#0D99FF] text-white text-[10px] px-2 py-0.5 rounded pointer-events-none font-semibold whitespace-nowrap z-20">
+              {element.name}
+            </div>
+            {/* Save as Component Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const componentName = prompt('Enter component name:', element.name) || element.name;
+                saveAsComponent(element.id, componentName);
+              }}
+              className="absolute -right-8 top-0 bg-[#0D99FF] hover:bg-[#0a7acc] text-white p-1.5 rounded shadow-lg transition-colors z-20 pointer-events-auto"
+              title="Save as Component"
+            >
+              <Component size={14} />
+            </button>
+          </>
         )}
       </div>
     );
@@ -456,40 +472,51 @@ export default function Canvas() {
       {/* Bottom Toolbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 bg-[#1e1e1e] rounded-xl px-1.5 py-1.5 shadow-lg border border-[#2a2a2a]">
         {/* Tool group */}
-        <button
-          className={activeTool === 'select' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
-          title="Select"
-          onClick={() => setActiveTool('select')}
-        >
-          <MousePointer2 size={18} />
-        </button>
-        <button
-          className={activeTool === 'frame' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
-          title="Frame"
-          onClick={() => setActiveTool('frame')}
-        >
-          <Hash size={18} />
-        </button>
+        <div className="relative group">
+          <button
+            className={activeTool === 'select' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+            onClick={() => setActiveTool('select')}
+          >
+            <MousePointer2 size={18} />
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[11px] text-white bg-[#333] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">Select</span>
+        </div>
+        <div className="relative group">
+          <button
+            className={activeTool === 'frame' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+            onClick={() => setActiveTool('frame')}
+          >
+            <Hash size={18} />
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[11px] text-white bg-[#333] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">Frame</span>
+        </div>
 
         <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
 
-        <button
-          className={activeTool === 'text' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
-          title="Text"
-          onClick={() => setActiveTool('text')}
-        >
-          <Type size={18} />
-        </button>
-        <button
-          className={activeTool === 'rectangle' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
-          title="Rectangle"
-          onClick={() => setActiveTool('rectangle')}
-        >
-          <Square size={18} />
-        </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Comments">
-          <MessageCircle size={18} />
-        </button>
+        <div className="relative group">
+          <button
+            className={activeTool === 'text' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+            onClick={() => setActiveTool('text')}
+          >
+            <Type size={18} />
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[11px] text-white bg-[#333] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">Text</span>
+        </div>
+        <div className="relative group">
+          <button
+            className={activeTool === 'rectangle' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+            onClick={() => setActiveTool('rectangle')}
+          >
+            <Square size={18} />
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[11px] text-white bg-[#333] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">Rectangle</span>
+        </div>
+        <div className="relative group">
+          <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]">
+            <MessageCircle size={18} />
+          </button>
+          <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 text-[11px] text-white bg-[#333] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none">Comments</span>
+        </div>
       </div>
     </div>
   );
