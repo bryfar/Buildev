@@ -32,27 +32,6 @@ export default function AssetsPanel() {
   return (
     <div className="p-4 space-y-6">
       <div>
-        <h3 className="text-xs font-semibold text-[#999] uppercase mb-3">Tech Stack</h3>
-        <select className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
-          <option>Next.js</option>
-          <option>React</option>
-          <option>Vue</option>
-          <option>Svelte</option>
-          <option>HTML/CSS</option>
-        </select>
-      </div>
-
-      <div>
-        <h3 className="text-xs font-semibold text-[#999] uppercase mb-3">Animation Engine</h3>
-        <select className="w-full bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white">
-          <option>Framer Motion</option>
-          <option>GSAP</option>
-          <option>CSS</option>
-          <option>Anime.js</option>
-        </select>
-      </div>
-
-      <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-xs font-semibold text-[#999] uppercase">Color Palette</h3>
           <button
