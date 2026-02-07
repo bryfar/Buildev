@@ -4,7 +4,7 @@ import React from "react"
 
 import { useAppStore } from '@/lib/store';
 import { useEffect, useRef, useState } from 'react';
-import { ZoomIn, ZoomOut, Grid3x3 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Grid3x3, Move, Palette } from 'lucide-react';
 
 export default function Canvas() {
   const {
@@ -17,11 +17,28 @@ export default function Canvas() {
     selectElement,
     selectedElementId,
     showGrid,
+    activeBreakpoint,
   } = useAppStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [canvasColor, setCanvasColor] = useState('#0f0f0f');
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [viewportOffsetX, setViewportOffsetX] = useState(0);
+  const [viewportOffsetY, setViewportOffsetY] = useState(0);
+  const [isViewportDragging, setIsViewportDragging] = useState(false);
+  const [viewportDragStart, setViewportDragStart] = useState({ x: 0, y: 0 });
+
+  // Get breakpoint dimensions
+  const breakpointDimensions = {
+    mobile: { width: 375, height: 812, showNotch: true },
+    tablet: { width: 768, height: 1024, showNotch: false },
+    desktop: { width: 1440, height: 900, showNotch: false },
+  };
+
+  const currentDimensions = breakpointDimensions[activeBreakpoint];
 
   // Handle zoom with Ctrl/Cmd + Scroll
   useEffect(() => {
@@ -55,6 +72,27 @@ export default function Canvas() {
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    setIsViewportDragging(false);
+  };
+
+  // Handle viewport dragging
+  const handleViewportMouseDown = (e: React.MouseEvent) => {
+    if (e.button === 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsViewportDragging(true);
+      setViewportDragStart({ 
+        x: e.clientX - viewportOffsetX, 
+        y: e.clientY - viewportOffsetY 
+      });
+    }
+  };
+
+  const handleViewportMouseMove = (e: React.MouseEvent) => {
+    if (isViewportDragging) {
+      setViewportOffsetX(e.clientX - viewportDragStart.x);
+      setViewportOffsetY(e.clientY - viewportDragStart.y);
+    }
   };
 
   return (
@@ -65,21 +103,50 @@ export default function Canvas() {
           <button
             onClick={() => setZoom(zoom * 1.2)}
             className="p-2 text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
+            title="Zoom in"
           >
             <ZoomIn size={18} />
           </button>
           <button
             onClick={() => setZoom(zoom / 1.2)}
             className="p-2 text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors"
+            title="Zoom out"
           >
             <ZoomOut size={18} />
           </button>
           <button className="p-2 text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
             <span className="text-xs font-medium">{Math.round(zoom * 100)}%</span>
           </button>
+          
+          {/* Canvas Color Picker */}
+          <div className="relative ml-4 pl-4 border-l border-[#2a2a2a]">
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              className="p-2 text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors flex items-center gap-2"
+              title="Change canvas color"
+            >
+              <Palette size={18} />
+            </button>
+            {showColorPicker && (
+              <div className="absolute top-12 left-0 bg-[#1e1e1e] border border-[#2a2a2a] rounded-lg p-3 z-50 shadow-lg">
+                <label className="block text-xs text-[#999] mb-2">Canvas Color</label>
+                <input
+                  type="color"
+                  value={canvasColor}
+                  onChange={(e) => setCanvasColor(e.target.value)}
+                  className="w-12 h-12 rounded cursor-pointer"
+                />
+              </div>
+            )}
+          </div>
         </div>
 
-        <button className="p-2 text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors">
+        <div className="flex items-center gap-2 text-[#666] text-xs">
+          <Move size={14} />
+          <span>Drag viewport | Shift+Drag canvas</span>
+        </div>
+
+        <button className="p-2 text-[#999] hover:text-white hover:bg-[#2a2a2a] rounded transition-colors" title="Toggle grid">
           <Grid3x3 size={18} />
         </button>
       </div>
@@ -87,8 +154,9 @@ export default function Canvas() {
       {/* Canvas */}
       <div
         ref={canvasRef}
-        className="flex-1 relative overflow-hidden bg-[#0f0f0f] cursor-move"
+        className="flex-1 relative overflow-hidden cursor-move"
         style={{
+          backgroundColor: canvasColor,
           backgroundImage: showGrid
             ? `radial-gradient(circle, #222 0.5px, transparent 0.5px)`
             : 'none',
@@ -102,17 +170,33 @@ export default function Canvas() {
       >
         {/* Viewport Container */}
         <div
+          ref={viewportRef}
           style={{
-            transform: `translate(${panX}px, ${panY}px) scale(${zoom})`,
+            transform: `translate(calc(${viewportOffsetX}px - 50%), calc(${viewportOffsetY}px - 50%)) scale(${zoom})`,
             transformOrigin: '0 0',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+            transition: isViewportDragging ? 'none' : 'transform 0.1s ease-out',
+            cursor: isViewportDragging ? 'grabbing' : 'grab',
           }}
-          className="absolute top-0 left-0"
+          className="absolute top-1/2 left-1/2 select-none"
+          onMouseDown={handleViewportMouseDown}
+          onMouseMove={handleViewportMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
         >
-          {/* Mobile Viewport */}
-          <div className="w-[375px] h-[812px] bg-white rounded-3xl shadow-2xl overflow-hidden border-[12px] border-black">
-            {/* Notch */}
-            <div className="h-6 bg-black rounded-b-3xl absolute top-0 left-1/2 transform -translate-x-1/2 w-40 z-10" />
+          {/* Responsive Viewport */}
+          <div
+            className={`bg-white shadow-2xl overflow-hidden pointer-events-none ${
+              activeBreakpoint === 'mobile' ? 'rounded-3xl border-[12px] border-black' : 'border border-gray-300'
+            }`}
+            style={{
+              width: `${currentDimensions.width}px`,
+              height: `${currentDimensions.height}px`,
+            }}
+          >
+            {/* Notch - Only on mobile */}
+            {currentDimensions.showNotch && (
+              <div className="h-6 bg-black rounded-b-3xl absolute top-0 left-1/2 transform -translate-x-1/2 w-40 z-10" />
+            )}
 
             {/* Viewport Content */}
             <div className="w-full h-full bg-white relative" onClick={(e) => {
