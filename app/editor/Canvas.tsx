@@ -28,10 +28,15 @@ export default function Canvas() {
     selectedElementId,
     showGrid,
     activeBreakpoint,
+    activeTool,
+    setActiveTool,
+    addElement,
+    updateElement,
   } = useAppStore();
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
+  const viewportContentRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [canvasColor, setCanvasColor] = useState('#0f0f0f');
@@ -40,6 +45,9 @@ export default function Canvas() {
   const [viewportOffsetY, setViewportOffsetY] = useState(0);
   const [isViewportDragging, setIsViewportDragging] = useState(false);
   const [viewportDragStart, setViewportDragStart] = useState({ x: 0, y: 0 });
+  const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
+  const [elementDragStart, setElementDragStart] = useState({ x: 0, y: 0 });
+  const [elementOriginalPos, setElementOriginalPos] = useState({ x: 0, y: 0 });
 
   // Get breakpoint dimensions
   const breakpointDimensions = {
@@ -65,6 +73,31 @@ export default function Canvas() {
     return () => canvas?.removeEventListener('wheel', handleWheel);
   }, [zoom, setZoom]);
 
+  // Handle element dragging
+  useEffect(() => {
+    if (!draggingElementId) return;
+
+    const handleMouseMoveDrag = (e: MouseEvent) => {
+      const deltaX = (e.clientX - elementDragStart.x) / zoom;
+      const deltaY = (e.clientY - elementDragStart.y) / zoom;
+      updateElement(draggingElementId, {
+        x: Math.round(elementOriginalPos.x + deltaX),
+        y: Math.round(elementOriginalPos.y + deltaY),
+      });
+    };
+
+    const handleMouseUpDrag = () => {
+      setDraggingElementId(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMoveDrag);
+    document.addEventListener('mouseup', handleMouseUpDrag);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMoveDrag);
+      document.removeEventListener('mouseup', handleMouseUpDrag);
+    };
+  }, [draggingElementId, elementDragStart, elementOriginalPos, zoom, updateElement]);
+
   // Handle panning with spacebar + drag
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
@@ -87,7 +120,7 @@ export default function Canvas() {
 
   // Handle viewport dragging
   const handleViewportMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0) {
+    if (e.button === 0 && activeTool === 'select' && !draggingElementId) {
       e.preventDefault();
       e.stopPropagation();
       setIsViewportDragging(true);
@@ -114,9 +147,20 @@ export default function Canvas() {
     return (
       <div
         key={element.id}
+        onMouseDown={(e) => {
+          if (activeTool !== 'select') return;
+          e.stopPropagation();
+          e.preventDefault();
+          selectElement(element.id);
+          setDraggingElementId(element.id);
+          setElementDragStart({ x: e.clientX, y: e.clientY });
+          setElementOriginalPos({ x: element.x, y: element.y });
+        }}
         onClick={(e) => {
           e.stopPropagation();
-          selectElement(element.id);
+          if (activeTool === 'select') {
+            selectElement(element.id);
+          }
         }}
         style={{
           position: 'absolute',
@@ -126,13 +170,14 @@ export default function Canvas() {
           height: `${element.height}px`,
           backgroundColor: element.backgroundColor || (element.type === 'frame' ? 'transparent' : '#e5e5e5'),
           opacity: element.opacity,
-          cursor: 'pointer',
+          cursor: activeTool === 'select' ? (draggingElementId === element.id ? 'grabbing' : 'pointer') : 'crosshair',
           borderRadius: element.type === 'circle' ? '50%' : undefined,
           display: 'flex',
           alignItems: element.type === 'text' ? 'center' : 'flex-start',
           justifyContent: element.type === 'text' ? 'center' : 'flex-start',
+          pointerEvents: 'auto',
         }}
-        className={`transition-all ${
+        className={`${
           selectedElementId === element.id
             ? 'ring-2 ring-[#0D99FF] shadow-lg z-10'
             : 'hover:ring-1 hover:ring-gray-400 hover:ring-opacity-50'
@@ -274,10 +319,39 @@ export default function Canvas() {
             )}
 
             {/* Viewport Content */}
-            <div className="w-full h-full bg-white relative" onClick={(e) => {
-              e.stopPropagation();
-              selectElement(null);
-            }}>
+            <div
+              ref={viewportContentRef}
+              className="w-full h-full bg-white relative"
+              style={{
+                cursor: activeTool === 'rectangle' ? 'crosshair' : 'default',
+                pointerEvents: 'auto',
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (activeTool === 'rectangle') {
+                  const rect = viewportContentRef.current?.getBoundingClientRect();
+                  if (!rect) return;
+                  const localX = (e.clientX - rect.left) / zoom;
+                  const localY = (e.clientY - rect.top) / zoom;
+                  const defaultWidth = 100;
+                  const defaultHeight = 100;
+                  addElement({
+                    name: 'Rectangle',
+                    type: 'rectangle',
+                    x: Math.round(localX - defaultWidth / 2),
+                    y: Math.round(localY - defaultHeight / 2),
+                    width: defaultWidth,
+                    height: defaultHeight,
+                    backgroundColor: '#9747FF',
+                    opacity: 1,
+                    isVisible: true,
+                  });
+                  setActiveTool('select');
+                } else {
+                  selectElement(null);
+                }
+              }}
+            >
               {currentPage?.elements.map((element) => renderElement(element))}
             </div>
           </div>
@@ -287,19 +361,35 @@ export default function Canvas() {
       {/* Bottom Toolbar */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-0.5 bg-[#1e1e1e] rounded-xl px-1.5 py-1.5 shadow-lg border border-[#2a2a2a]">
         {/* Tool group */}
-        <button className="p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]" title="Select">
+        <button
+          className={activeTool === 'select' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+          title="Select"
+          onClick={() => setActiveTool('select')}
+        >
           <MousePointer2 size={18} />
         </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Frame">
+        <button
+          className={activeTool === 'frame' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+          title="Frame"
+          onClick={() => setActiveTool('frame')}
+        >
           <Hash size={18} />
         </button>
 
         <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
 
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Text">
+        <button
+          className={activeTool === 'text' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+          title="Text"
+          onClick={() => setActiveTool('text')}
+        >
           <Type size={18} />
         </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Rectangle">
+        <button
+          className={activeTool === 'rectangle' ? 'p-2 rounded-lg bg-[#0D99FF]/15 text-[#0D99FF]' : 'p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]'}
+          title="Rectangle"
+          onClick={() => setActiveTool('rectangle')}
+        >
           <Square size={18} />
         </button>
         <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a]" title="Comments">

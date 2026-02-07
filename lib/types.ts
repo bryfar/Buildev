@@ -2,6 +2,7 @@
 
 export type ElementType = 'rectangle' | 'circle' | 'text' | 'image' | 'frame';
 export type BreakpointName = 'mobile' | 'tablet' | 'desktop';
+export type ActiveTool = 'select' | 'frame' | 'text' | 'rectangle';
 
 export interface ResponsiveDelta {
   [key: string]: number | string | boolean;
@@ -74,6 +75,7 @@ export interface EditorState {
   currentPage: Page | null;
   selectedElementId: string | null;
   activeBreakpoint: BreakpointName;
+  activeTool: ActiveTool;
   zoom: number;
   panX: number;
   panY: number;
