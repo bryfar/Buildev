@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { Project, Page, SiteElement, EditorState, BreakpointName } from './types';
+import { Project, Page, SiteElement, EditorState, BreakpointName, ActiveTool } from './types';
 
 // Simple UUID generation fallback
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -27,6 +27,7 @@ interface AppState extends EditorState {
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
   setActiveBreakpoint: (breakpoint: BreakpointName) => void;
+  setActiveTool: (tool: ActiveTool) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -35,6 +36,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   currentPage: null,
   selectedElementId: null,
   activeBreakpoint: 'mobile',
+  activeTool: 'select',
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -414,5 +416,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   setActiveBreakpoint: (breakpoint: BreakpointName) => {
     set({ activeBreakpoint: breakpoint });
+  },
+
+  setActiveTool: (tool: ActiveTool) => {
+    set({ activeTool: tool });
   },
 }));
