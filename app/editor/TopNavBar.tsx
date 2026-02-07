@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useAppStore } from '@/lib/store';
-import { ArrowLeft, RotateCcw, RotateCw, Play, Share2 } from 'lucide-react';
+import { useAppStore } from "@/lib/store";
+import { ArrowLeft, RotateCcw, RotateCw, Play, Share2 } from "lucide-react";
 
-type ViewMode = 'design' | 'code' | 'preview';
+type ViewMode = "design" | "code" | "preview";
 
 interface TopNavBarProps {
   viewMode: ViewMode;
@@ -22,11 +22,7 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
     <div className="h-16 bg-[#1e1e1e] border-b border-[#2a2a2a] flex items-center px-6 gap-6">
       {/* Left: Logo, Back, Undo/Redo, Project Name */}
       <div className="flex items-center gap-4">
-        <img
-          src="/union.svg"
-          alt="Logo"
-          className="h-10 w-auto"
-        />
+        <img src="/Union.svg" alt="Logo" className="h-10 w-auto" />
         <button
           onClick={handleBack}
           className="text-[#999] hover:text-white transition-colors p-2 hover:bg-[#2a2a2a] rounded"
@@ -45,22 +41,26 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
         </div>
 
         <div className="ml-4 border-l border-[#2a2a2a] pl-4">
-          <h2 className="font-semibold text-white text-lg">{currentProject?.name}</h2>
-          <p className="text-xs text-[#666]">{currentProject?.pages[0]?.name}</p>
+          <h2 className="font-semibold text-white text-lg">
+            {currentProject?.name}
+          </h2>
+          <p className="text-xs text-[#666]">
+            {currentProject?.pages[0]?.name}
+          </p>
         </div>
       </div>
 
       {/* Center: Work Mode Switcher */}
       <div className="flex-1 flex justify-center">
         <div className="flex gap-1 bg-[#0f0f0f] rounded-lg p-1">
-          {(['design', 'code', 'preview'] as ViewMode[]).map((mode) => (
+          {(["design", "code", "preview"] as ViewMode[]).map((mode) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
               className={`px-4 py-1.5 text-sm font-medium rounded transition-colors capitalize ${
                 viewMode === mode
-                  ? 'text-white bg-[#0D99FF]'
-                  : 'text-[#999] hover:text-white'
+                  ? "text-white bg-[#0D99FF]"
+                  : "text-[#999] hover:text-white"
               }`}
             >
               {mode}
