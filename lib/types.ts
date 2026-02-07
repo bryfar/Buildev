@@ -60,6 +60,14 @@ export interface Page {
   breakpoints: Breakpoint[];
 }
 
+export interface ReusableComponent {
+  id: string;
+  name: string;
+  element: SiteElement;
+  thumbnail?: string;
+  createdAt: Date;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -68,6 +76,8 @@ export interface Project {
   updatedAt: Date;
   techStack: 'nextjs' | 'react' | 'vue' | 'svelte' | 'html';
   animationEngine: 'framer-motion' | 'gsap' | 'css' | 'anime';
+  colorPalette?: string[];
+  reusableComponents?: ReusableComponent[];
 }
 
 export interface EditorState {
@@ -80,4 +90,6 @@ export interface EditorState {
   panX: number;
   panY: number;
   showGrid: boolean;
+  colorPalette: string[];
+  reusableComponents: ReusableComponent[];
 }
