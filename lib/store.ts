@@ -28,6 +28,10 @@ interface AppState extends EditorState {
   setPan: (x: number, y: number) => void;
   setActiveBreakpoint: (breakpoint: BreakpointName) => void;
   setActiveTool: (tool: ActiveTool) => void;
+  
+  // Breakpoints - Mobile-first approach
+  initializeMobileFirstBreakpoints: () => void;
+  getDefaultBreakpoints: () => Array<{name: BreakpointName; width: number}>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -420,5 +424,39 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setActiveTool: (tool: ActiveTool) => {
     set({ activeTool: tool });
+  },
+
+  // Mobile-first breakpoints initialization
+  getDefaultBreakpoints: () => [
+    { name: 'mobile' as const, width: 375 },     // Primary breakpoint
+    { name: 'tablet' as const, width: 768 },     // Secondary
+    { name: 'desktop' as const, width: 1024 },   // Tertiary
+  ],
+
+  initializeMobileFirstBreakpoints: () => {
+    const state = get();
+    if (state.currentProject && state.currentPage) {
+      const updatedPages = state.currentProject.pages.map(page => {
+        if (page.id === state.currentPage!.id) {
+          return {
+            ...page,
+            breakpoints: [
+              { name: 'mobile' as const, width: 375 },
+              { name: 'tablet' as const, width: 768 },
+              { name: 'desktop' as const, width: 1024 },
+            ],
+          };
+        }
+        return page;
+      });
+      
+      set(prevState => ({
+        currentProject: prevState.currentProject ? {
+          ...prevState.currentProject,
+          pages: updatedPages,
+        } : null,
+        currentPage: updatedPages.find(p => p.id === state.currentPage!.id) || null,
+      }));
+    }
   },
 }));
