@@ -48,6 +48,7 @@ export default function Canvas() {
   const [draggingElementId, setDraggingElementId] = useState<string | null>(null);
   const [elementDragStart, setElementDragStart] = useState({ x: 0, y: 0 });
   const [elementOriginalPos, setElementOriginalPos] = useState({ x: 0, y: 0 });
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
 
   // Get breakpoint dimensions
   const breakpointDimensions = {
@@ -72,6 +73,18 @@ export default function Canvas() {
     canvas?.addEventListener('wheel', handleWheel, { passive: false });
     return () => canvas?.removeEventListener('wheel', handleWheel);
   }, [zoom, setZoom]);
+
+  // Resolve pending text editing after element is added
+  useEffect(() => {
+    if (editingElementId === 'pending' && currentPage) {
+      const elements = currentPage.elements;
+      const lastEl = elements[elements.length - 1];
+      if (lastEl && lastEl.type === 'text') {
+        setEditingElementId(lastEl.id);
+        selectElement(lastEl.id);
+      }
+    }
+  }, [editingElementId, currentPage, selectElement]);
 
   // Handle element dragging
   useEffect(() => {
@@ -149,6 +162,7 @@ export default function Canvas() {
         key={element.id}
         onMouseDown={(e) => {
           if (activeTool !== 'select') return;
+          if (editingElementId === element.id) return;
           e.stopPropagation();
           e.preventDefault();
           selectElement(element.id);
@@ -160,6 +174,12 @@ export default function Canvas() {
           e.stopPropagation();
           if (activeTool === 'select') {
             selectElement(element.id);
+          }
+        }}
+        onDoubleClick={(e) => {
+          if (element.type === 'text' && activeTool === 'select') {
+            e.stopPropagation();
+            setEditingElementId(element.id);
           }
         }}
         style={{
@@ -184,18 +204,69 @@ export default function Canvas() {
         }`}
       >
         {element.type === 'text' && (
-          <p style={{
-            fontSize: element.fontSize,
-            fontFamily: element.fontFamily,
-            fontWeight: element.fontWeight,
-            lineHeight: element.lineHeight ? `${element.lineHeight}` : undefined,
-            letterSpacing: element.letterSpacing,
-            color: element.textColor,
-            width: '100%',
-            textAlign: 'center',
-          }}>
-            {element.textContent}
-          </p>
+          editingElementId === element.id ? (
+            <div
+              contentEditable
+              suppressContentEditableWarning
+              ref={(el) => {
+                if (el) {
+                  el.focus();
+                  // Place cursor at end
+                  const range = document.createRange();
+                  range.selectNodeContents(el);
+                  range.collapse(false);
+                  const sel = window.getSelection();
+                  sel?.removeAllRanges();
+                  sel?.addRange(range);
+                }
+              }}
+              onBlur={(e) => {
+                updateElement(element.id, { textContent: e.currentTarget.textContent || '' });
+                setEditingElementId(null);
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === 'Escape') {
+                  setEditingElementId(null);
+                }
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  updateElement(element.id, { textContent: e.currentTarget.textContent || '' });
+                  setEditingElementId(null);
+                }
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                fontSize: element.fontSize,
+                fontFamily: element.fontFamily,
+                fontWeight: element.fontWeight,
+                lineHeight: element.lineHeight ? `${element.lineHeight}` : undefined,
+                letterSpacing: element.letterSpacing,
+                color: element.textColor,
+                width: '100%',
+                textAlign: 'center',
+                outline: 'none',
+                cursor: 'text',
+                minHeight: '1em',
+              }}
+            >
+              {element.textContent}
+            </div>
+          ) : (
+            <p style={{
+              fontSize: element.fontSize,
+              fontFamily: element.fontFamily,
+              fontWeight: element.fontWeight,
+              lineHeight: element.lineHeight ? `${element.lineHeight}` : undefined,
+              letterSpacing: element.letterSpacing,
+              color: element.textColor,
+              width: '100%',
+              textAlign: 'center',
+            }}>
+              {element.textContent || 'Type something...'}
+            </p>
+          )
         )}
         
         {/* Render children recursively */}
@@ -323,7 +394,7 @@ export default function Canvas() {
               ref={viewportContentRef}
               className="w-full h-full bg-white relative"
               style={{
-                cursor: activeTool === 'rectangle' ? 'crosshair' : 'default',
+                cursor: activeTool === 'text' ? 'text' : activeTool === 'rectangle' ? 'crosshair' : 'default',
                 pointerEvents: 'auto',
               }}
               onClick={(e) => {
@@ -347,8 +418,32 @@ export default function Canvas() {
                     isVisible: true,
                   });
                   setActiveTool('select');
+                } else if (activeTool === 'text') {
+                  const rect = viewportContentRef.current?.getBoundingClientRect();
+                  if (!rect) return;
+                  const localX = (e.clientX - rect.left) / zoom;
+                  const localY = (e.clientY - rect.top) / zoom;
+                  addElement({
+                    name: 'Text',
+                    type: 'text',
+                    x: Math.round(localX),
+                    y: Math.round(localY - 15),
+                    width: 200,
+                    height: 30,
+                    backgroundColor: 'transparent',
+                    opacity: 1,
+                    fontSize: 16,
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 400,
+                    textContent: '',
+                    textColor: '#000000',
+                    isVisible: true,
+                  });
+                  setEditingElementId('pending');
+                  setActiveTool('select');
                 } else {
                   selectElement(null);
+                  setEditingElementId(null);
                 }
               }}
             >
