@@ -107,6 +107,71 @@ export default function Canvas() {
     }
   };
 
+  // Render element recursively with children
+  const renderElement = (element: any): React.ReactNode => {
+    const isVisible = element.isVisible !== false;
+    
+    if (!isVisible) return null;
+
+    return (
+      <div
+        key={element.id}
+        onClick={(e) => {
+          e.stopPropagation();
+          selectElement(element.id);
+        }}
+        style={{
+          position: 'absolute',
+          left: `${element.x}px`,
+          top: `${element.y}px`,
+          width: `${element.width}px`,
+          height: `${element.height}px`,
+          backgroundColor: element.backgroundColor || (element.type === 'frame' ? 'transparent' : '#e5e5e5'),
+          opacity: element.opacity,
+          cursor: 'pointer',
+          borderRadius: element.type === 'circle' ? '50%' : undefined,
+          display: 'flex',
+          alignItems: element.type === 'text' ? 'center' : 'flex-start',
+          justifyContent: element.type === 'text' ? 'center' : 'flex-start',
+        }}
+        className={`transition-all ${
+          selectedElementId === element.id
+            ? 'ring-2 ring-[#0D99FF] shadow-lg z-10'
+            : 'hover:ring-1 hover:ring-gray-400 hover:ring-opacity-50'
+        }`}
+      >
+        {element.type === 'text' && (
+          <p style={{
+            fontSize: element.fontSize,
+            fontFamily: element.fontFamily,
+            fontWeight: element.fontWeight,
+            lineHeight: element.lineHeight ? `${element.lineHeight}` : undefined,
+            letterSpacing: element.letterSpacing,
+            color: element.textColor,
+            width: '100%',
+            textAlign: 'center',
+          }}>
+            {element.textContent}
+          </p>
+        )}
+        
+        {/* Render children recursively */}
+        {element.children && element.children.length > 0 && (
+          <>
+            {element.children.map((child: any) => renderElement(child))}
+          </>
+        )}
+        
+        {/* Selection indicator */}
+        {selectedElementId === element.id && (
+          <div className="absolute -top-6 left-0 bg-[#0D99FF] text-white text-[10px] px-2 py-0.5 rounded pointer-events-none font-semibold whitespace-nowrap z-20">
+            {element.name}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-[#0f0f0f] overflow-hidden relative">
       {/* Toolbar */}
@@ -215,43 +280,7 @@ export default function Canvas() {
               e.stopPropagation();
               selectElement(null);
             }}>
-              {currentPage?.elements.map((element) => (
-                <div
-                  key={element.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    selectElement(element.id);
-                  }}
-                  style={{
-                    position: 'absolute',
-                    left: `${element.x}px`,
-                    top: `${element.y}px`,
-                    width: `${element.width}px`,
-                    height: `${element.height}px`,
-                    backgroundColor: element.backgroundColor || '#e5e5e5',
-                    opacity: element.opacity,
-                    cursor: 'pointer',
-                  }}
-                  className={`transition-all ${
-                    selectedElementId === element.id
-                      ? 'ring-2 ring-blue-500 ring-offset-1'
-                      : 'hover:ring-1 hover:ring-gray-300'
-                  }`}
-                >
-                  {element.type === 'text' && (
-                    <p style={{
-                      fontSize: element.fontSize,
-                      fontFamily: element.fontFamily,
-                      fontWeight: element.fontWeight,
-                      lineHeight: element.lineHeight,
-                      letterSpacing: element.letterSpacing,
-                      color: element.textColor,
-                    }}>
-                      {element.textContent}
-                    </p>
-                  )}
-                </div>
-              ))}
+              {currentPage?.elements.map((element) => renderElement(element))}
             </div>
           </div>
         </div>

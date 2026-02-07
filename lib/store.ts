@@ -49,7 +49,185 @@ export const useAppStore = create<AppState>((set, get) => ({
       pages: [{
         id: generateId(),
         name: 'Page 1',
-        elements: [],
+        elements: [
+          // Hero Section with nested components
+          {
+            id: generateId(),
+            name: 'Hero Section',
+            type: 'frame',
+            x: 0,
+            y: 0,
+            width: 375,
+            height: 400,
+            backgroundColor: '#0f0f0f',
+            opacity: 1,
+            responsive: {},
+            isExpanded: true,
+            isVisible: true,
+            children: [
+              {
+                id: generateId(),
+                name: 'Main Heading',
+                type: 'text',
+                x: 20,
+                y: 60,
+                width: 335,
+                height: 80,
+                backgroundColor: 'transparent',
+                opacity: 1,
+                fontSize: 32,
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                lineHeight: 1.2,
+                textContent: 'Design at the speed of imagination.',
+                textColor: '#ffffff',
+                responsive: {},
+                isVisible: true,
+              },
+              {
+                id: generateId(),
+                name: 'Body Paragraph',
+                type: 'text',
+                x: 20,
+                y: 160,
+                width: 335,
+                height: 60,
+                backgroundColor: 'transparent',
+                opacity: 1,
+                fontSize: 16,
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 400,
+                lineHeight: 1.5,
+                textContent: 'AetherSite Pro gives you the power of code with the simplicity of visual building.',
+                textColor: '#999999',
+                responsive: {},
+                isVisible: true,
+              },
+              {
+                id: generateId(),
+                name: 'Primary CTA',
+                type: 'rectangle',
+                x: 20,
+                y: 240,
+                width: 140,
+                height: 48,
+                backgroundColor: '#0D99FF',
+                opacity: 1,
+                responsive: {},
+                isVisible: true,
+                children: [
+                  {
+                    id: generateId(),
+                    name: 'Button Text',
+                    type: 'text',
+                    x: 0,
+                    y: 0,
+                    width: 140,
+                    height: 48,
+                    backgroundColor: 'transparent',
+                    opacity: 1,
+                    fontSize: 14,
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 600,
+                    textContent: 'Start Building',
+                    textColor: '#ffffff',
+                    responsive: {},
+                    isVisible: true,
+                  },
+                ],
+              },
+              {
+                id: generateId(),
+                name: 'Features Grid',
+                type: 'frame',
+                x: 20,
+                y: 310,
+                width: 335,
+                height: 70,
+                backgroundColor: 'transparent',
+                opacity: 1,
+                responsive: {},
+                isVisible: true,
+                children: [
+                  {
+                    id: generateId(),
+                    name: 'Feature 1',
+                    type: 'rectangle',
+                    x: 0,
+                    y: 0,
+                    width: 100,
+                    height: 60,
+                    backgroundColor: '#1e1e1e',
+                    opacity: 1,
+                    responsive: {},
+                    isVisible: true,
+                  },
+                  {
+                    id: generateId(),
+                    name: 'Feature 2',
+                    type: 'rectangle',
+                    x: 115,
+                    y: 0,
+                    width: 100,
+                    height: 60,
+                    backgroundColor: '#1e1e1e',
+                    opacity: 1,
+                    responsive: {},
+                    isVisible: true,
+                  },
+                  {
+                    id: generateId(),
+                    name: 'Feature 3',
+                    type: 'rectangle',
+                    x: 230,
+                    y: 0,
+                    width: 100,
+                    height: 60,
+                    backgroundColor: '#1e1e1e',
+                    opacity: 1,
+                    responsive: {},
+                    isVisible: true,
+                  },
+                ],
+              },
+            ],
+          },
+          // Navigation bar
+          {
+            id: generateId(),
+            name: 'Navigation',
+            type: 'frame',
+            x: 0,
+            y: 420,
+            width: 375,
+            height: 60,
+            backgroundColor: '#1e1e1e',
+            opacity: 1,
+            responsive: {},
+            isExpanded: true,
+            isVisible: true,
+            children: [
+              {
+                id: generateId(),
+                name: 'Logo',
+                type: 'text',
+                x: 20,
+                y: 18,
+                width: 120,
+                height: 24,
+                backgroundColor: 'transparent',
+                opacity: 1,
+                fontSize: 18,
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 700,
+                textContent: 'AETHERSITE',
+                textColor: '#0D99FF',
+                responsive: {},
+                isVisible: true,
+              },
+            ],
+          },
+        ],
         breakpoints: [
           { name: 'mobile', width: 375 },
           { name: 'tablet', width: 768 },
@@ -152,9 +330,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       if (!state.currentPage) return state;
       
-      const updatedElements = state.currentPage.elements.map(el =>
-        el.id === id ? { ...el, ...updates } : el
-      );
+      // Recursive function to update element in nested structure
+      const updateElementRecursive = (elements: SiteElement[]): SiteElement[] => {
+        return elements.map(el => {
+          if (el.id === id) {
+            return { ...el, ...updates };
+          }
+          if (el.children && el.children.length > 0) {
+            return {
+              ...el,
+              children: updateElementRecursive(el.children),
+            };
+          }
+          return el;
+        });
+      };
+      
+      const updatedElements = updateElementRecursive(state.currentPage.elements);
       
       const updatedPage = {
         ...state.currentPage,
@@ -175,7 +367,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       if (!state.currentPage) return state;
       
-      const updatedElements = state.currentPage.elements.filter(el => el.id !== id);
+      // Recursive function to delete element from nested structure
+      const deleteElementRecursive = (elements: SiteElement[]): SiteElement[] => {
+        return elements
+          .filter(el => el.id !== id)
+          .map(el => {
+            if (el.children && el.children.length > 0) {
+              return {
+                ...el,
+                children: deleteElementRecursive(el.children),
+              };
+            }
+            return el;
+          });
+      };
+      
+      const updatedElements = deleteElementRecursive(state.currentPage.elements);
       const updatedPage = {
         ...state.currentPage,
         elements: updatedElements,
