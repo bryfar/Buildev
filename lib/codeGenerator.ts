@@ -180,7 +180,7 @@ export default function ${componentName}() {
 /**
  * Generates a React component for an element
  */
-function generateReactComponent(element: SiteElement): string {
+export function generateReactComponent(element: SiteElement): string {
   const style = {
     position: 'absolute',
     left: element.x,

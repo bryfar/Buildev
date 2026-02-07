@@ -8,7 +8,7 @@ import RightSidebar from './RightSidebar';
 import CodePreview from './CodePreview';
 import { useState } from 'react';
 
-type ViewMode = 'design' | 'prototype' | 'code' | 'preview';
+type ViewMode = 'design' | 'code' | 'preview';
 
 export default function EditorView() {
   const { currentProject } = useAppStore();
@@ -31,11 +31,6 @@ export default function EditorView() {
         {/* Canvas Area */}
         {viewMode === 'design' && <Canvas />}
         {viewMode === 'code' && <CodePreview />}
-        {viewMode === 'prototype' && (
-          <div className="flex-1 flex items-center justify-center text-[#999]">
-            <p>Prototype mode coming soon</p>
-          </div>
-        )}
         {viewMode === 'preview' && (
           <div className="flex-1 flex items-center justify-center text-[#999]">
             <p>Preview mode coming soon</p>
