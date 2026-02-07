@@ -11,10 +11,8 @@ import {
   MousePointer2,
   Hash,
   Type,
-  Component,
-  Settings,
-  LayoutGrid,
-  Code,
+  Square,
+  MessageCircle,
 } from 'lucide-react';
 
 export default function Canvas() {
@@ -187,21 +185,11 @@ export default function Canvas() {
         <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Text">
           <Type size={18} />
         </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Components">
-          <Component size={18} />
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Rectangle">
+          <Square size={18} />
         </button>
-
-        <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
-
-        {/* Utility group */}
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Settings">
-          <Settings size={18} />
-        </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Grid">
-          <LayoutGrid size={18} />
-        </button>
-        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Code">
-          <Code size={18} />
+        <button className="p-2 rounded-lg text-[#999] hover:text-white hover:bg-[#2a2a2a] transition-colors" title="Comments">
+          <MessageCircle size={18} />
         </button>
       </div>
     </div>
