@@ -1,10 +1,10 @@
 import React from "react"
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Outfit } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-const inter = Inter({ subsets: ["latin"] });
+const outfit = Outfit({ subsets: ["latin"], variable: '--font-sans' });
 
 export const metadata: Metadata = {
   title: 'Buildev',
@@ -15,6 +15,9 @@ export const metadata: Metadata = {
     initialScale: 1,
     maximumScale: 1,
   },
+  icons: {
+    icon: '/isotype.svg',
+  },
 }
 
 export default function RootLayout({
@@ -23,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <style>{`
           :root {
@@ -38,7 +41,7 @@ export default function RootLayout({
           }
         `}</style>
       </head>
-      <body className={`${inter.className} antialiased bg-[#0f0f0f] text-white`}>
+      <body className={`${outfit.variable} font-sans antialiased bg-[#0f0f0f] text-white`}>
         {children}
         <Analytics />
       </body>

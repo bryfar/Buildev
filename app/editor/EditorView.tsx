@@ -6,6 +6,7 @@ import LeftSidebar from './LeftSidebar';
 import Canvas from './Canvas';
 import RightSidebar from './RightSidebar';
 import CodePreview from './CodePreview';
+import PreviewMode from './PreviewMode';
 import { useState } from 'react';
 
 type ViewMode = 'design' | 'code' | 'preview';
@@ -25,17 +26,13 @@ export default function EditorView() {
 
       {/* Main Editor Area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Always show */}
-        <LeftSidebar />
+        {/* Left Sidebar - Only in design mode */}
+        {viewMode === 'design' && <LeftSidebar />}
 
         {/* Canvas Area */}
         {viewMode === 'design' && <Canvas />}
         {viewMode === 'code' && <CodePreview />}
-        {viewMode === 'preview' && (
-          <div className="flex-1 flex items-center justify-center text-[#999]">
-            <p>Preview mode coming soon</p>
-          </div>
-        )}
+        {viewMode === 'preview' && <PreviewMode />}
 
         {/* Right Sidebar - Only in design mode */}
         {viewMode === 'design' && <RightSidebar />}

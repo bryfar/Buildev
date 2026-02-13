@@ -85,48 +85,47 @@ export default function AIAssistant() {
   };
 
   return (
-    <div className="p-4 h-full flex flex-col">
-      <h3 className="text-xs font-semibold text-[#999] uppercase mb-3">AI Assistant</h3>
+    <div className="flex flex-col h-full bg-[#1e1e1e] border-l border-[#2a2a2a]">
+      <div className="p-3 border-b border-[#2a2a2a] bg-[#1a1a1a]">
+        <h3 className="text-xs font-semibold text-[#999] uppercase">AI Assistant</h3>
+      </div>
 
       {/* Chat Area */}
-      <div className="flex-1 mb-4 bg-[#0f0f0f] rounded-lg p-3 overflow-y-auto space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((msg, idx) => (
           <div
             key={idx}
-            className={`text-xs ${
-              msg.type === 'user'
-                ? 'text-right text-[#0D99FF]'
-                : 'text-left text-[#ddd]'
-            }`}
+            className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`inline-block max-w-xs px-3 py-2 rounded ${
-                msg.type === 'user'
-                  ? 'bg-[#0D99FF] text-white'
-                  : 'bg-[#2a2a2a] text-[#ddd]'
-              }`}
+              className={`max-w-[85%] rounded-lg px-3 py-2 text-xs leading-relaxed ${msg.type === 'user'
+                  ? 'bg-[#0D99FF] text-white rounded-br-none'
+                  : 'bg-[#2a2a2a] text-[#e0e0e0] rounded-bl-none border border-[#333]'
+                }`}
             >
               {msg.text}
             </div>
           </div>
         ))}
         {isLoading && (
-          <div className="flex items-center gap-2 text-[#999]">
-            <Loader size={14} className="animate-spin" />
-            <span className="text-xs">Generating...</span>
+          <div className="flex justify-start">
+            <div className="bg-[#2a2a2a] rounded-lg rounded-bl-none px-3 py-2 text-xs border border-[#333] flex items-center gap-2 text-[#999]">
+              <Loader size={12} className="animate-spin" />
+              <span>Thinking...</span>
+            </div>
           </div>
         )}
       </div>
 
       {/* Templates */}
-      <div className="mb-4 space-y-2">
-        <p className="text-xs text-[#666] font-medium">Quick Templates:</p>
-        <div className="grid grid-cols-2 gap-2">
+      <div className="px-4 pb-2">
+        <p className="text-[10px] text-[#666] font-medium mb-2 uppercase tracking-wider">Quick Actions</p>
+        <div className="flex flex-wrap gap-2">
           {Object.entries(componentTemplates).map(([key, template]) => (
             <button
               key={key}
               onClick={() => handleTemplateClick(key as keyof typeof componentTemplates)}
-              className="px-2 py-1.5 text-xs bg-[#2a2a2a] hover:bg-[#333] text-[#ddd] rounded transition-colors truncate"
+              className="px-2 py-1 text-[10px] bg-[#2a2a2a] hover:bg-[#333] text-[#ccc] border border-[#333] rounded transition-colors"
             >
               {template.name}
             </button>
@@ -135,23 +134,25 @@ export default function AIAssistant() {
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleGenerate} className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Create a pricing card..."
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          disabled={isLoading}
-          className="flex-1 bg-[#0f0f0f] border border-[#2a2a2a] rounded px-3 py-2 text-sm text-white placeholder-[#666] focus:outline-none focus:border-[#0D99FF] disabled:opacity-50"
-        />
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="bg-[#0D99FF] hover:bg-[#0a7acc] disabled:opacity-50 text-white px-3 py-2 rounded transition-colors"
-        >
-          <Send size={16} />
-        </button>
-      </form>
+      <div className="p-3 border-t border-[#2a2a2a] bg-[#1a1a1a]">
+        <form onSubmit={handleGenerate} className="flex gap-2 relative">
+          <input
+            type="text"
+            placeholder="Describe a component..."
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            disabled={isLoading}
+            className="w-full bg-[#0f0f0f] border border-[#333] rounded-lg pl-3 pr-10 py-2.5 text-xs text-white placeholder-[#555] focus:border-[#0D99FF] focus:outline-none transition-colors"
+          />
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="absolute right-1.5 top-1.5 p-1 bg-[#0D99FF] hover:bg-[#0a7acc] disabled:opacity-50 text-white rounded transition-colors"
+          >
+            <Send size={12} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

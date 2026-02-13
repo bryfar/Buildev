@@ -14,40 +14,46 @@ export interface Breakpoint {
   isCustom?: boolean;
 }
 
+/**
+ * Represents a single element on the canvas (Node).
+ * Can be a primitive (rectangle, text) or a container (frame).
+ * Supports responsive overrides via the `responsive` property.
+ */
 export interface SiteElement {
   id: string;
   name: string;
   type: ElementType;
-  
+
   // Base properties (Mobile - default)
   x: number;
   y: number;
   width: number;
   height: number;
-  
+
   // Styling
   backgroundColor?: string;
   opacity: number;
   blendMode?: string;
-  
+
   // Typography (for text elements)
   fontSize?: number;
   fontFamily?: string;
   fontWeight?: number;
   lineHeight?: number;
   letterSpacing?: number;
+  textAlign?: 'left' | 'center' | 'right' | 'justify';
   textContent?: string;
   textColor?: string;
-  
+
   // Responsive overrides
   responsive: {
     [key in BreakpointName]?: ResponsiveDelta;
   };
-  
+
   // Hierarchy
   children?: SiteElement[];
   parentId?: string;
-  
+
   // UI state
   isExpanded?: boolean;
   isVisible?: boolean;
@@ -68,6 +74,10 @@ export interface ReusableComponent {
   createdAt: Date;
 }
 
+/**
+ * Root entity for a website project.
+ * Contains multiple pages and global project settings.
+ */
 export interface Project {
   id: string;
   name: string;

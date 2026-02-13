@@ -1,7 +1,7 @@
 "use client";
 
 import { useAppStore } from "@/lib/store";
-import { ArrowLeft, RotateCcw, RotateCw, Play, Share2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, RotateCw, Play, Share2, Download } from "lucide-react";
 
 type ViewMode = "design" | "code" | "preview";
 
@@ -14,8 +14,61 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
   const { currentProject } = useAppStore();
 
   const handleBack = () => {
-    // Close project - in a real app, this would reset state
-    window.location.reload();
+    window.location.href = '/dashboard';
+  };
+
+  /* 
+   * Handles downloading the current project as a ZIP file.
+   * Uses JSZip to bundle project files and FileSaver to trigger download.
+   */
+  const handleDownload = async () => {
+    if (!currentProject) return;
+
+    try {
+      // Dynamic import to avoid SSR issues if any
+      const JSZip = (await import('jszip')).default;
+      const { saveAs } = (await import('file-saver'));
+
+      const zip = new JSZip();
+
+      // Create root folder
+      const root = zip.folder(currentProject.name) || zip;
+
+      // Add project metadata
+      root.file('project.json', JSON.stringify(currentProject, null, 2));
+
+      // Example: Add a README
+      root.file('README.md', `# ${currentProject.name}\n\nExported from Buildev.`);
+
+      // Create a simple index.html
+      const indexPage = currentProject.pages[0];
+      if (indexPage) {
+        root.file('index.html', `<!-- Generated from Buildev -->\n<html>\n<body>\n  <div id="app"></div>\n</body>\n</html>`);
+        root.file('styles.css', `body { margin: 0; font-family: sans-serif; }`);
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `${currentProject.name}.zip`);
+
+      alert("Project downloaded successfully!");
+    } catch (error) {
+      console.error("Download failed:", error);
+      alert("Failed to download project.");
+    }
+  };
+
+  /*
+   * Simulates sharing the project by copying a link to clipboard.
+   * In a real backend, this would generate a unique share ID.
+   */
+  const handleShare = () => {
+    const shareUrl = `${window.location.origin}/share/${currentProject?.id}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert(`Share link copied to clipboard:\n${shareUrl}`);
+    }).catch(err => {
+      console.error('Failed to copy text: ', err);
+      alert('Failed to copy link to clipboard');
+    });
   };
 
   return (
@@ -57,11 +110,10 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-4 py-1.5 text-sm font-medium rounded transition-colors capitalize ${
-                viewMode === mode
-                  ? "text-white bg-[#0D99FF]"
-                  : "text-[#999] hover:text-white"
-              }`}
+              className={`px-4 py-1.5 text-sm font-medium rounded transition-colors capitalize ${viewMode === mode
+                ? "text-white bg-[#0D99FF]"
+                : "text-[#999] hover:text-white"
+                }`}
             >
               {mode}
             </button>
@@ -69,13 +121,32 @@ export default function TopNavBar({ viewMode, setViewMode }: TopNavBarProps) {
         </div>
       </div>
 
-      {/* Right: Play, Share */}
-      <div className="flex items-center gap-2">
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#2a2a2a] text-white hover:bg-[#333] rounded transition-colors">
-          <Play size={16} />
-          Play
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2 bg-[#0D99FF] hover:bg-[#0a7acc] text-white rounded transition-colors">
+      <div className="flex items-center gap-4">
+        {/* Code Mode Actions */}
+        {viewMode === 'code' && (
+          <button
+            className="flex items-center gap-2 px-4 py-2 bg-[#2a2a2a] text-white hover:bg-[#333] rounded transition-colors"
+            onClick={handleDownload}
+          >
+            <Download size={16} />
+            Download
+          </button>
+        )}
+
+        {/* Connected Users (Simulated) */}
+        <div className="flex -space-x-2">
+          <img src="https://i.pravatar.cc/150?u=1" alt="User 1" className="w-8 h-8 rounded-full border-2 border-[#1e1e1e]" title="Alex (You)" />
+          <img src="https://i.pravatar.cc/150?u=2" alt="User 2" className="w-8 h-8 rounded-full border-2 border-[#1e1e1e]" title="Sarah" />
+          <img src="https://i.pravatar.cc/150?u=3" alt="User 3" className="w-8 h-8 rounded-full border-2 border-[#1e1e1e]" title="Mike" />
+          <div className="w-8 h-8 rounded-full border-2 border-[#1e1e1e] bg-[#333] flex items-center justify-center text-[10px] text-white font-medium">
+            +2
+          </div>
+        </div>
+
+        <button
+          className="flex items-center gap-2 px-4 py-2 bg-[#0D99FF] hover:bg-[#0a7acc] text-white rounded transition-colors"
+          onClick={handleShare}
+        >
           <Share2 size={16} />
           Share
         </button>

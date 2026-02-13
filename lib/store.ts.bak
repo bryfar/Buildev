@@ -10,9 +10,9 @@ interface AppState extends EditorState {
   // Projects
   projects: Project[];
   createProject: (name: string) => void;
+  updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   openProject: (id: string) => void;
-  updateProjectSettings: (settings: Partial<Pick<Project, 'name' | 'techStack' | 'animationEngine'>>) => void;
 
   // Pages
   createPage: (name: string) => void;
@@ -37,26 +37,42 @@ interface AppState extends EditorState {
 
   // Reusable Components
   saveAsComponent: (elementId: string, name: string) => void;
+  createInstance: (componentId: string) => void;
+  updateComponentMaster: (componentId: string, updates: Partial<SiteElement>) => void;
   deleteComponent: (componentId: string) => void;
   instantiateComponent: (componentId: string) => void;
+
+  // Constraints & Auto Layout
+  applyConstraint: (elementId: string, constraint: any) => void;
+  enableAutoLayout: (elementId: string, autoLayout: any) => void;
+
+  // Design Tokens
+  createToken: (token: any) => void;
+  updateToken: (tokenId: string, updates: any) => void;
+
+  // States & Interactions
+  addState: (elementId: string, stateName: string, stateStyle: any) => void;
+  addInteraction: (elementId: string, interaction: any) => void;
 
   // Breakpoints - Mobile-first approach
   initializeMobileFirstBreakpoints: () => void;
   getDefaultBreakpoints: () => Array<{ name: BreakpointName; width: number }>;
-  initializeStore: () => void;
+
+  // Import & Reverse UI
+  importElements: (elements: SiteElement[]) => void;
+
+  // History (Undo/Redo)
+  history: {
+    past: SiteElement[][];
+    future: SiteElement[][];
+  };
+  undo: () => void;
+  redo: () => void;
+  addToHistory: () => void;
 }
 
-/**
- * Main State Management Store (Zustand).
- * Handles:
- * - Project/Page CRUD operations
- * - Element manipulation (add, update, delete, select)
- * - Canvas state (zoom, pan, active tool)
- * - Global settings (breakpoints, colors)
- */
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
-  initializeStore: () => { },
   currentProject: null,
   currentPage: null,
   selectedElementId: null,
@@ -69,6 +85,83 @@ export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   colorPalette: [],
   reusableComponents: [],
+
+  // History
+  history: {
+    past: [],
+    future: [],
+  },
+
+  addToHistory: () => {
+    set((state) => {
+      if (!state.currentPage) return state;
+      // Limit history to 50 steps
+      const newPast = [...state.history.past, state.currentPage.elements].slice(-50);
+      return {
+        history: {
+          past: newPast,
+          future: [], // Clear future on new action
+        },
+      };
+    });
+  },
+
+  undo: () => {
+    set((state) => {
+      if (!state.currentPage || state.history.past.length === 0) return state;
+
+      const previous = state.history.past[state.history.past.length - 1];
+      const newPast = state.history.past.slice(0, -1);
+
+      return {
+        currentPage: {
+          ...state.currentPage,
+          elements: previous,
+        },
+        history: {
+          past: newPast,
+          future: [state.currentPage.elements, ...state.history.future],
+        },
+        // Update project reference as well for consistency
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p =>
+            p.id === state.currentPage!.id
+              ? { ...p, elements: previous }
+              : p
+          )
+        } : null
+      };
+    });
+  },
+
+  redo: () => {
+    set((state) => {
+      if (!state.currentPage || state.history.future.length === 0) return state;
+
+      const next = state.history.future[0];
+      const newFuture = state.history.future.slice(1);
+
+      return {
+        currentPage: {
+          ...state.currentPage,
+          elements: next,
+        },
+        history: {
+          past: [...state.history.past, state.currentPage.elements],
+          future: newFuture,
+        },
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p =>
+            p.id === state.currentPage!.id
+              ? { ...p, elements: next }
+              : p
+          )
+        } : null
+      };
+    });
+  },
 
   // Project management
   createProject: (name: string) => {
@@ -283,6 +376,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  updateProject: (id: string, updates: Partial<Project>) => {
+    set((state) => {
+      const updatedProjects = state.projects.map(p =>
+        p.id === id ? { ...p, ...updates, updatedAt: new Date() } : p
+      );
+      return {
+        projects: updatedProjects,
+        currentProject: state.currentProject?.id === id
+          ? updatedProjects.find(p => p.id === id) || null
+          : state.currentProject,
+      };
+    });
+  },
+
   openProject: (id: string) => {
     const project = get().projects.find(p => p.id === id);
     if (project) {
@@ -291,23 +398,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         currentPage: project.pages[0],
       });
     }
-  },
-
-  updateProjectSettings: (settings: Partial<Pick<Project, 'name' | 'techStack' | 'animationEngine'>>) => {
-    set((state) => {
-      if (!state.currentProject) return state;
-
-      const updatedProject = {
-        ...state.currentProject,
-        ...settings,
-        updatedAt: new Date(),
-      };
-
-      return {
-        currentProject: updatedProject,
-        projects: state.projects.map(p => p.id === updatedProject.id ? updatedProject : p),
-      };
-    });
   },
 
   // Page management
@@ -348,13 +438,47 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Element management
   addElement: (element) => {
+    get().addToHistory();
     set((state) => {
       if (!state.currentPage) return state;
+
+      // Auto-generate responsive values based on breakpoint scaling
+      const generateResponsiveValues = (baseEl: any) => {
+        const responsive: Record<string, any> = {};
+
+        // Tablet: scale approximately 2x (768/375)
+        responsive.tablet = {
+          x: Math.round((baseEl.x || 0) * 2.05),
+          y: Math.round((baseEl.y || 0) * 2.05),
+          width: Math.round((baseEl.width || 0) * 2.05),
+          height: Math.round((baseEl.height || 0) * 2.05),
+        };
+
+        // Add typography scaling if applicable
+        if (baseEl.fontSize) {
+          responsive.tablet.fontSize = Math.round(baseEl.fontSize * 1.3);
+        }
+
+        // Desktop: scale approximately 3.8x (1440/375)
+        responsive.desktop = {
+          x: Math.round((baseEl.x || 0) * 3.8),
+          y: Math.round((baseEl.y || 0) * 3.8),
+          width: Math.round((baseEl.width || 0) * 3.8),
+          height: Math.round((baseEl.height || 0) * 3.8),
+        };
+
+        // Add typography scaling if applicable
+        if (baseEl.fontSize) {
+          responsive.desktop.fontSize = Math.round(baseEl.fontSize * 1.6);
+        }
+
+        return responsive;
+      };
 
       const newElement: SiteElement = {
         ...element,
         id: generateId(),
-        responsive: {},
+        responsive: generateResponsiveValues(element),
       };
 
       const updatedPage = {
@@ -373,6 +497,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateElement: (id: string, updates: Partial<SiteElement>) => {
+    get().addToHistory();
     set((state) => {
       if (!state.currentPage) return state;
 
@@ -410,6 +535,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteElement: (id: string) => {
+    get().addToHistory();
     set((state) => {
       if (!state.currentPage) return state;
 
@@ -550,6 +676,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   instantiateComponent: (componentId: string) => {
+    get().addToHistory();
     const state = get();
     const component = state.reusableComponents.find(c => c.id === componentId);
     if (!component || !state.currentPage) return;
@@ -618,5 +745,313 @@ export const useAppStore = create<AppState>((set, get) => ({
         currentPage: updatedPages.find(p => p.id === state.currentPage!.id) || null,
       }));
     }
+  },
+
+  createInstance: (componentId: string) => {
+    get().addToHistory();
+    const state = get();
+    const component = state.reusableComponents.find(c => c.id === componentId);
+    if (!component || !state.currentPage) return;
+
+    const generateNewIds = (element: SiteElement): SiteElement => {
+      const newElement = {
+        ...JSON.parse(JSON.stringify(element)),
+        id: generateId(),
+        componentId: componentId,
+        isComponentMaster: false,
+        x: element.x + 20,
+        y: element.y + 20,
+      };
+
+      if (element.children) {
+        newElement.children = element.children.map(generateNewIds);
+      }
+
+      return newElement;
+    };
+
+    const newInstance = generateNewIds(component.element);
+
+    const updatedPage = {
+      ...state.currentPage,
+      elements: [...state.currentPage.elements, newInstance],
+    };
+
+    set({
+      currentPage: updatedPage,
+      currentProject: state.currentProject ? {
+        ...state.currentProject,
+        pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+      } : null,
+    });
+  },
+
+  updateComponentMaster: (componentId: string, updates: Partial<SiteElement>) => {
+    get().addToHistory();
+    set((state) => {
+      const updatedComponents = state.reusableComponents.map(comp => {
+        if (comp.id === componentId) {
+          return {
+            ...comp,
+            element: { ...comp.element, ...updates },
+          };
+        }
+        return comp;
+      });
+
+      return {
+        reusableComponents: updatedComponents,
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          reusableComponents: updatedComponents,
+        } : null,
+      };
+    });
+  },
+
+  // Constraints
+  applyConstraint: (elementId: string, constraint: any) => {
+    get().addToHistory();
+    set((state) => {
+      if (!state.currentPage) return state;
+
+      const updateElementRecursive = (elements: SiteElement[]): SiteElement[] => {
+        return elements.map(el => {
+          if (el.id === elementId) {
+            return { ...el, constraints: constraint };
+          }
+          if (el.children) {
+            return {
+              ...el,
+              children: updateElementRecursive(el.children),
+            };
+          }
+          return el;
+        });
+      };
+
+      const updatedElements = updateElementRecursive(state.currentPage.elements);
+      const updatedPage = { ...state.currentPage, elements: updatedElements };
+
+      return {
+        currentPage: updatedPage,
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+        } : null,
+      };
+    });
+  },
+
+  // Auto Layout
+  enableAutoLayout: (elementId: string, autoLayout: any) => {
+    get().addToHistory();
+    set((state) => {
+      if (!state.currentPage) return state;
+
+      const updateElementRecursive = (elements: SiteElement[]): SiteElement[] => {
+        return elements.map(el => {
+          if (el.id === elementId) {
+            return { ...el, autoLayout };
+          }
+          if (el.children) {
+            return {
+              ...el,
+              children: updateElementRecursive(el.children),
+            };
+          }
+          return el;
+        });
+      };
+
+      const updatedElements = updateElementRecursive(state.currentPage.elements);
+      const updatedPage = { ...state.currentPage, elements: updatedElements };
+
+      return {
+        currentPage: updatedPage,
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+        } : null,
+      };
+    });
+  },
+
+  // Design Tokens
+  createToken: (token: any) => {
+    set((state) => {
+      if (!state.currentProject) return state;
+
+      const designSystem = state.currentProject.designSystem || {
+        id: generateId(),
+        name: 'Default Design System',
+        colors: [],
+        typography: [],
+        spacing: [],
+        borderRadius: [],
+        shadows: [],
+        opacity: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const newToken = {
+        ...token,
+        id: generateId(),
+        createdAt: new Date(),
+      };
+
+      const category = token.category as keyof typeof designSystem;
+      const updatedDesignSystem = {
+        ...designSystem,
+        [category]: Array.isArray(designSystem[category])
+          ? [...(designSystem[category] as any[]), newToken]
+          : [newToken],
+        updatedAt: new Date(),
+      };
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          designSystem: updatedDesignSystem,
+        },
+      };
+    });
+  },
+
+  updateToken: (tokenId: string, updates: any) => {
+    set((state) => {
+      if (!state.currentProject?.designSystem) return state;
+
+      const designSystem = state.currentProject.designSystem;
+      const category = updates.category || 'colors';
+      const categoryKey = category as keyof typeof designSystem;
+
+      const tokens = designSystem[categoryKey];
+      const tokenArray = Array.isArray(tokens) ? tokens : [];
+      const updatedTokens = tokenArray.map((t: any) =>
+        t.id === tokenId ? { ...t, ...updates } : t
+      );
+
+      const updatedDesignSystem = {
+        ...designSystem,
+        [category]: updatedTokens,
+        updatedAt: new Date(),
+      };
+
+      return {
+        currentProject: {
+          ...state.currentProject,
+          designSystem: updatedDesignSystem,
+        },
+      };
+    });
+  },
+
+  // States & Interactions
+  addState: (elementId: string, stateName: string, stateStyle: any) => {
+    get().addToHistory();
+    set((state) => {
+      if (!state.currentPage) return state;
+
+      const updateElementRecursive = (elements: SiteElement[]): SiteElement[] => {
+        return elements.map(el => {
+          if (el.id === elementId) {
+            return {
+              ...el,
+              states: {
+                ...el.states,
+                [stateName]: stateStyle,
+              },
+            };
+          }
+          if (el.children) {
+            return {
+              ...el,
+              children: updateElementRecursive(el.children),
+            };
+          }
+          return el;
+        });
+      };
+
+      const updatedElements = updateElementRecursive(state.currentPage.elements);
+      const updatedPage = { ...state.currentPage, elements: updatedElements };
+
+      return {
+        currentPage: updatedPage,
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+        } : null,
+      };
+    });
+  },
+
+  addInteraction: (elementId: string, interaction: any) => {
+    get().addToHistory();
+    set((state) => {
+      if (!state.currentPage) return state;
+
+      const updateElementRecursive = (elements: SiteElement[]): SiteElement[] => {
+        return elements.map(el => {
+          if (el.id === elementId) {
+            return {
+              ...el,
+              interactions: [...(el.interactions || []), { ...interaction, id: generateId() }],
+            };
+          }
+          if (el.children) {
+            return {
+              ...el,
+              children: updateElementRecursive(el.children),
+            };
+          }
+          return el;
+        });
+      };
+
+      const updatedElements = updateElementRecursive(state.currentPage.elements);
+      const updatedPage = { ...state.currentPage, elements: updatedElements };
+
+      return {
+        currentPage: updatedPage,
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+        } : null,
+      };
+    });
+  },
+
+  importElements: (elements: SiteElement[]) => {
+    get().addToHistory();
+    set((state) => {
+      if (!state.currentPage) return state;
+
+      // Assign new IDs to imported elements to avoid collisions
+      const reidElements = (els: SiteElement[]): SiteElement[] => {
+        return els.map(el => ({
+          ...el,
+          id: generateId(),
+          children: el.children ? reidElements(el.children) : undefined
+        }));
+      };
+
+      const newElements = reidElements(elements);
+
+      const updatedPage = {
+        ...state.currentPage,
+        elements: [...state.currentPage.elements, ...newElements],
+      };
+
+      return {
+        currentPage: updatedPage,
+        currentProject: state.currentProject ? {
+          ...state.currentProject,
+          pages: state.currentProject.pages.map(p => p.id === updatedPage.id ? updatedPage : p),
+        } : null,
+      };
+    });
   },
 }));
