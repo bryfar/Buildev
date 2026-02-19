@@ -1,6 +1,6 @@
 # Buildev - AI-Powered Website Builder
 
-![Buildev Banner](/public/preview_banner.png)
+![Buildev Banner](/Portada.png)
 
 > **Experience the future of web development.** Buildev combines a VS Code-like environment with a powerful drag-and-drop canvas, powered by AI to help you build stunning websites in minutes.
 
