@@ -1,0 +1,24 @@
+{
+  "name": "@buildersite/sdk",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Buildersite SDK – headless content delivery for any JS/TS project",
+  "exports": {
+    ".": "./src/index.ts",
+    "./vue": "./src/vue.ts"
+  },
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@buildersite/domain": "workspace:*"
+  },
+  "peerDependencies": {
+    "vue": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  }
+}

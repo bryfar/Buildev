@@ -1,0 +1,110 @@
+:root {
+  /* Common Brand Colors */
+  --brand-primary: #4f46e5;
+  --brand-primary-hover: #4338ca;
+  --brand-secondary: #6366f1;
+  
+  /* Light Theme (Reference: Buildev V12 Light) */
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-alt: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --bg-input: #ffffff;
+  
+  --border-subtle: #f1f5f9;
+  --border-main: #e2e8f0;
+  --border-strong: #cbd5e1;
+  
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --text-dim: #94a3b8;
+  --text-on-primary: #ffffff;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.3);
+}
+
+.dark {
+  /* Dark Theme (Reference: Buildev V12 Dark) */
+  --bg-main: #0a0a0b;
+  --bg-surface: #141416;
+  --bg-surface-alt: #1d1d20;
+  --bg-sidebar: #0f0f11;
+  --bg-input: #1d1d20;
+  
+  --brand-primary: #5850ec;
+  --brand-primary-hover: #4e46e5;
+  --brand-secondary: #2d2d30;
+
+  --border-subtle: #1d1d20;
+  --border-main: #27272a;
+  --border-strong: #3f3f46;
+  
+  --text-main: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-dim: #71717a;
+  --text-on-primary: #ffffff;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.6);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.8);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.9);
+  
+  --glass-bg: rgba(20, 20, 22, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+/* Global Reset Overrides */
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), color 0.3s ease;
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, textarea, select {
+  background-color: var(--bg-input);
+  color: var(--text-main);
+  border: 1px solid var(--border-main);
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--brand-primary);
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  outline: none;
+}
+
+button {
+  font-family: inherit;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Premium Glass Utility */
+.glass-effect {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+}
+
+/* Global Scrollbar Customization */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
+}

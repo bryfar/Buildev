@@ -1,0 +1,36 @@
+Environment variables loaded from .env
+Prisma schema loaded from prisma/schema.prisma
+➤ YN0000: · Yarn 4.13.0
+➤ YN0000: ┌ Resolution step
+➤ YN0000: └ Completed in 2s 285ms
+➤ YN0000: ┌ Post-resolution validation
+➤ YN0002: │ @buildev/builder-sdk-vue@workspace:packages/builder-sdk-vue doesn't provide vue (p369d5b), requested by @builder.io/sdk-vue.
+➤ YN0002: │ @buildev/editor@workspace:apps/buildev-editor doesn't provide @tiptap/core (p5df037), requested by @tiptap/extension-color and other dependencies.
+➤ YN0002: │ @buildev/root@workspace:. doesn't provide vue (p57257d), requested by vue-router.
+➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
+➤ YN0086: │ Some peer dependencies are incorrectly met by dependencies; run yarn explain peer-requirements for details.
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Fetch step
+➤ YN0000: └ Completed in 18s 100ms
+➤ YN0000: ┌ Link step
+➤ YN0000: │ ESM support for PnP uses the experimental loader API and is therefore experimental
+➤ YN0000: └ Completed in 0s 253ms
+➤ YN0000: · Done with warnings in 20s 774ms
+➤ YN0000: · Yarn 4.13.0
+➤ YN0000: ┌ Resolution step
+➤ YN0000: └ Completed in 2s 658ms
+➤ YN0000: ┌ Post-resolution validation
+➤ YN0002: │ @buildev/builder-sdk-vue@workspace:packages/builder-sdk-vue doesn't provide vue (p369d5b), requested by @builder.io/sdk-vue.
+➤ YN0002: │ @buildev/editor@workspace:apps/buildev-editor doesn't provide @tiptap/core (p5df037), requested by @tiptap/extension-color and other dependencies.
+➤ YN0002: │ @buildev/root@workspace:. doesn't provide vue (p57257d), requested by vue-router.
+➤ YN0086: │ Some peer dependencies are incorrectly met by your project; run yarn explain peer-requirements <hash> for details, where <hash> is the six-letter p-prefixed code.
+➤ YN0086: │ Some peer dependencies are incorrectly met by dependencies; run yarn explain peer-requirements for details.
+➤ YN0000: └ Completed
+➤ YN0000: ┌ Fetch step
+➤ YN0000: └ Completed in 17s 654ms
+➤ YN0000: ┌ Link step
+➤ YN0000: │ ESM support for PnP uses the experimental loader API and is therefore experimental
+➤ YN0000: └ Completed in 0s 238ms
+➤ YN0000: · Done with warnings in 20s 684ms
+Error: Could not resolve @prisma/client despite the installation that we just tried.
+Please try to install it by hand with yarn add @prisma/client and rerun yarn dlx "prisma generate" 🙏.

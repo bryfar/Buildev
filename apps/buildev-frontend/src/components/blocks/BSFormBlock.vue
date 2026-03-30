@@ -1,0 +1,64 @@
+<template>
+  <form 
+    class="bs-form" 
+    @submit.prevent="handleSubmit"
+    :style="{ 
+      padding: block.props.padding || '20px', 
+      background: block.props.background || 'transparent',
+      gap: (block.props.gap as any) + 'px' || '16px',
+      display: 'flex',
+      flexDirection: 'column'
+    }"
+  >
+    <div v-if="!block.children?.length" class="empty-placeholder">
+      Form: Drop input blocks here
+    </div>
+    <slot></slot>
+    <button 
+      type="submit" 
+      v-if="block.props.showSubmit !== false" 
+      :class="['submit-btn', block.props.submitVariant || 'primary']"
+    >
+      {{ block.props.submitLabel || 'Submit' }}
+    </button>
+  </form>
+</template>
+
+<script setup lang="ts">
+import type { BSBlock } from "@buildersite/sdk";
+defineProps<{ block: BSBlock }>();
+
+function handleSubmit() {
+  alert('Form submitted! (Simulation)');
+}
+</script>
+
+<style scoped>
+.bs-form {
+  width: 100%;
+  border: 1px dashed rgba(99, 102, 241, 0.2);
+  border-radius: 8px;
+}
+.empty-placeholder {
+  padding: 20px;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 12px;
+}
+.submit-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.submit-btn.primary {
+  background: #6366f1;
+  color: white;
+}
+.submit-btn.secondary {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+</style>

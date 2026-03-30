@@ -1,0 +1,29 @@
+{
+  "name": "@buildev/root",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "bootstrap": "yarn install",
+    "dev:editor": "yarn workspace @buildersite/frontend dev",
+    "dev:backend": "yarn workspace @buildersite/backend dev"
+  },
+  "packageManager": "yarn@4.13.0",
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^22.0.0",
+    "express": "^4.18.3",
+    "jsonwebtoken": "^9.0.2",
+    "prisma": "5.22.0",
+    "typescript": "^5.6.3",
+    "vue-router": "^4.3.0",
+    "zod": "^3.23.8"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0"
+  }
+}

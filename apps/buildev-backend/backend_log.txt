@@ -1,0 +1,86 @@
+[INFO] 11:11:51 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.3)
+Error: Qualified path resolution failed: we looked for the following paths, but none could be accessed.
+
+Source path: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.js
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.json
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.node
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.jsx
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.ts
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.tsx
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.js
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.json
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.node
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.jsx
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.ts
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.tsx
+
+Require stack:
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/services/db.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/routes/auth.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/index.ts
+    at Function.require$$0.Module._resolveFilename (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.pnp.cjs:17561:13)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function.Module._load (node:internal/modules/cjs/loader:1192:37)
+    at Function.require$$0.Module._load (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.pnp.cjs:17447:31)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/services/db.ts:1:1)
+[ERROR] 11:11:52 Error: Qualified path resolution failed: we looked for the following paths, but none could be accessed.
+
+Source path: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.js
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.json
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.node
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.jsx
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.ts
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client.tsx
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.js
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.json
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.node
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.jsx
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.ts
+Not found: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/prisma-client/index.tsx
+
+Require stack:
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/services/db.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/routes/auth.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/index.ts
+[INFO] 11:26:13 Restarting: /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/services/db.ts has been modified
+(node:35405) Warning: [Warning] The runtime detected new information in a PnP file; reloading the API instance (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.pnp.cjs)
+(Use `node-22 --trace-warnings ...` to show where the warning was created)
+Error: @prisma/client tried to access .prisma, but it isn't declared in its dependencies; this makes the require call ambiguous and unsound.
+
+Required package: .prisma (via ".prisma/client/default")
+Required by: @prisma/client@virtual:90fc2b650985e70419d9a98acd8b72fe2cf9cb95ecf5ffadee126b871f291987c89310d1da0de11c12b8d997b3ac15c2ec69b6cc507717b2d90ee08a4f415d98#npm:5.22.0 (via /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.yarn/unplugged/@prisma-client-virtual-7dbeb55618/node_modules/@prisma/client/)
+
+Require stack:
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.yarn/unplugged/@prisma-client-virtual-7dbeb55618/node_modules/@prisma/client/default.js
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/services/db.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/routes/auth.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/index.ts
+    at Function.require$$0.Module._resolveFilename (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.pnp.cjs:17563:13)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)
+    at Function.Module._load (node:internal/modules/cjs/loader:1192:37)
+    at Function.require$$0.Module._load (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.pnp.cjs:17449:31)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Module.require (node:internal/modules/cjs/loader:1463:12)
+    at require (node:internal/modules/helpers:147:16)
+    at Object.<anonymous> (/home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.yarn/unplugged/@prisma-client-virtual-7dbeb55618/node_modules/@prisma/client/default.js:2:6)
+[ERROR] 11:26:15 Error: @prisma/client tried to access .prisma, but it isn't declared in its dependencies; this makes the require call ambiguous and unsound.
+
+Required package: .prisma (via ".prisma/client/default")
+Required by: @prisma/client@virtual:90fc2b650985e70419d9a98acd8b72fe2cf9cb95ecf5ffadee126b871f291987c89310d1da0de11c12b8d997b3ac15c2ec69b6cc507717b2d90ee08a4f415d98#npm:5.22.0 (via /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.yarn/unplugged/@prisma-client-virtual-7dbeb55618/node_modules/@prisma/client/)
+
+Require stack:
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/.yarn/unplugged/@prisma-client-virtual-7dbeb55618/node_modules/@prisma/client/default.js
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/services/db.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/routes/auth.ts
+- /home/bryfar/Repositorios/Project ( HTML, CSS, Javascript)/Buildersite/apps/buildersite-backend/src/index.ts
