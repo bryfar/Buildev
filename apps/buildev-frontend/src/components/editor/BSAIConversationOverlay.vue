@@ -1,154 +1,365 @@
 <template>
-  <div class="ai-conversation-root" v-if="isVisible">
-    <div class="ai-composer shadow-glow">
-      <div class="composer-header">
-        <div class="composer-tabs">
-          <button class="tab-item active">Edit</button>
-          <button class="tab-item">Chat</button>
+  <div v-if="isVisible" class="ai-overlay">
+    <div class="chat-panel">
+      <header class="panel-head">
+        <div class="head-left">
+          <span class="badge">Composer</span>
+          <span class="head-title">Agent</span>
         </div>
-        <div class="composer-actions">
-          <button class="icon-btn" title="Add Image"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></button>
-          <button class="icon-btn" @click="$emit('close')">×</button>
+        <div class="head-actions">
+          <button type="button" class="ghost-icon" title="Close" @click="$emit('close')">×</button>
         </div>
-      </div>
-      
-      <div class="composer-body">
-        <div class="composer-input-wrapper">
-          <div class="sparkle-icon">✨</div>
-          <textarea 
-            v-model="query" 
-            placeholder="Ask AI to edit or generate..." 
-            @keyup.enter.exact.prevent="handleSubmit"
-            ref="inputRef"
-          ></textarea>
+      </header>
+
+      <div ref="scrollRef" class="thread">
+        <div
+          v-for="(m, i) in thread"
+          :key="i"
+          class="thread-msg"
+          :class="m.role"
+        >
+          <div v-if="m.role === 'assistant'" class="avatar" aria-hidden="true">✦</div>
+          <div class="bubble">{{ m.text }}</div>
+        </div>
+        <div v-if="isThinking" class="thread-msg assistant">
+          <div class="avatar dim" aria-hidden="true">✦</div>
+          <div class="bubble thinking">
+            <span /><span /><span />
+          </div>
         </div>
       </div>
 
-      <div class="composer-footer">
-        <div class="suggestion-chips">
-          <div class="chip" @click="query = 'Make it responsive'">Make it responsive</div>
-          <div class="chip" @click="query = 'Add a hero section'">Add hero</div>
-          <div class="chip" @click="query = 'Fix alignment'">Fix alignment</div>
+      <div class="chips">
+        <button type="button" class="chip" @click="applyChip('Tighten spacing and hierarchy')">Spacing</button>
+        <button type="button" class="chip" @click="applyChip('Add a strong hero with CTA')">Hero</button>
+        <button type="button" class="chip" @click="applyChip('Improve mobile layout')">Mobile</button>
+      </div>
+
+      <div class="dock">
+        <textarea
+          ref="inputRef"
+          v-model="draft"
+          class="dock-input"
+          rows="2"
+          placeholder="Describe what you want changed…"
+          @keydown.enter.exact.prevent="submit"
+        />
+        <div class="dock-meta">
+          <span class="hint">Enter to send · Shift+Enter newline</span>
+          <button type="button" class="send" :disabled="!draft.trim() || isThinking" @click="submit">
+            Send
+          </button>
         </div>
-        <div class="submit-hint">Enter to Apply</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, watch, nextTick } from 'vue';
 
-defineProps<{ isVisible: boolean }>();
-const emit = defineEmits(["submit", "close"]);
+const props = defineProps<{
+  isVisible: boolean;
+  prompt?: string;
+}>();
 
-const query = ref("");
+const emit = defineEmits(['submit', 'close']);
+
+const scrollRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
+const draft = ref('');
+const isThinking = ref(false);
 
-onMounted(() => {
-  if (inputRef.value) inputRef.value.focus();
-});
+const thread = ref<{ role: 'user' | 'assistant'; text: string }[]>([]);
 
-function handleSubmit() {
-  if (!query.value.trim()) return;
-  emit("submit", query.value);
-  query.value = "";
+function seedThread() {
+  const base =
+    'I am ready to help shape this page. Tell me what to add, remove, or restyle. I will follow your canvas and blocks.';
+  const hint = props.prompt?.trim()
+    ? ` Context from this page: ${props.prompt.trim()}`
+    : '';
+  thread.value = [{ role: 'assistant', text: base + hint }];
+}
+
+watch(
+  () => props.isVisible,
+  (v) => {
+    if (v) {
+      seedThread();
+      isThinking.value = false;
+      draft.value = '';
+      nextTick(() => {
+        inputRef.value?.focus();
+        scrollToEnd();
+      });
+    }
+  }
+);
+
+function scrollToEnd() {
+  nextTick(() => {
+    if (scrollRef.value) {
+      scrollRef.value.scrollTop = scrollRef.value.scrollHeight;
+    }
+  });
+}
+
+function applyChip(text: string) {
+  draft.value = text;
+  inputRef.value?.focus();
+}
+
+function submit() {
+  const q = draft.value.trim();
+  if (!q || isThinking.value) return;
+  thread.value.push({ role: 'user', text: q });
+  draft.value = '';
+  emit('submit', q);
+  isThinking.value = true;
+  scrollToEnd();
+
+  window.setTimeout(() => {
+    isThinking.value = false;
+    thread.value.push({
+      role: 'assistant',
+      text:
+        'Noted. I applied your request in the canvas flow. Refine with another message, or close and keep editing manually.'
+    });
+    scrollToEnd();
+    nextTick(() => inputRef.value?.focus());
+  }, 900);
 }
 </script>
 
 <style scoped>
-.ai-conversation-root {
+.ai-overlay {
   position: absolute;
-  bottom: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  inset: 0;
   z-index: 1000;
-  width: 90%;
-  max-width: 600px;
-  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes slideUp {
-  from { transform: translate(-50%, 20px); opacity: 0; }
-  to { transform: translate(-50%, 0); opacity: 1; }
-}
-
-.ai-composer {
-  background: rgba(30, 30, 30, 0.85);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(138, 77, 245, 0.4);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
-}
-
-.composer-header {
-  height: 36px;
-  background: rgba(0,0,0,0.2);
   display: flex;
-  justify-content: space-between;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 24px 16px 72px;
+  pointer-events: none;
+}
+
+.chat-panel {
+  pointer-events: auto;
+  width: min(560px, 100%);
+  max-height: min(72vh, 520px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(22, 22, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(139, 92, 246, 0.12);
+  backdrop-filter: blur(16px);
+  overflow: hidden;
+  animation: rise 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.panel-head {
+  display: flex;
   align-items: center;
-  padding: 0 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
-
-.composer-tabs { display: flex; gap: 4px; height: 100%; }
-.tab-item {
-  background: transparent;
-  border: none;
-  color: #888;
-  font-size: 11px;
+.head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.badge {
+  font-size: 10px;
   font-weight: 700;
-  padding: 0 12px;
-  cursor: pointer;
-  height: 100%;
-  border-bottom: 2px solid transparent;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(139, 92, 246, 0.95);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.12);
 }
-.tab-item.active { color: #fff; border-bottom-color: var(--brand-primary, #8a4df5); }
-
-.composer-actions { display: flex; gap: 8px; }
-.icon-btn { background: transparent; border: none; color: #888; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
-.icon-btn:hover { color: #fff; }
-
-.composer-body { padding: 16px; }
-.composer-input-wrapper { display: flex; gap: 12px; align-items: flex-start; }
-.sparkle-icon { font-size: 18px; color: #8a4df5; margin-top: 4px; }
-
-textarea {
-  flex: 1;
-  background: transparent;
+.head-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+.ghost-icon {
+  width: 32px;
+  height: 32px;
   border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.ghost-icon:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  font-size: 15px;
+}
+
+.thread {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.thread-msg {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  max-width: 95%;
+}
+.thread-msg.user {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.2);
+  color: rgba(199, 181, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.avatar.dim {
+  opacity: 0.6;
+}
+
+.bubble {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
   line-height: 1.5;
+  color: rgba(255, 255, 255, 0.88);
+}
+.thread-msg.assistant .bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom-left-radius: 4px;
+}
+.thread-msg.user .bubble {
+  background: rgba(139, 92, 246, 0.28);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-bottom-right-radius: 4px;
+  color: #fff;
+}
+
+.bubble.thinking {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.bubble.thinking span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.9);
+  animation: pulse 1s ease-in-out infinite;
+}
+.bubble.thinking span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.bubble.thinking span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 14px 10px;
+}
+.chip {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.chip:hover {
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #fff;
+}
+
+.dock {
+  padding: 12px 14px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.2);
+}
+.dock-input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 10px 12px;
   resize: none;
   outline: none;
-  height: 60px;
   font-family: inherit;
 }
-
-.composer-footer {
-  padding: 8px 16px 12px;
+.dock-input:focus {
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+.dock-meta {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  border-top: 1px solid rgba(255,255,255,0.05);
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 12px;
 }
-
-.suggestion-chips { display: flex; gap: 8px; }
-.chip {
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  color: #aaa;
+.hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+}
+.send {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
   cursor: pointer;
-  transition: all 0.2s;
 }
-.chip:hover { background: rgba(138, 77, 245, 0.2); border-color: #8a4df5; color: #fff; }
-
-.submit-hint { font-size: 10px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-
-.shadow-glow { box-shadow: 0 0 30px rgba(138, 77, 245, 0.15); }
+.send:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 </style>

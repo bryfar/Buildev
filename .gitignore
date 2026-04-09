@@ -1,0 +1,16 @@
+**/node_modules/
+node_modules/
+.env
+dist/
+.DS_Store
+*.log
+.yarn/cache
+.yarn/unplugged
+.yarn/install-state.gz
+.pnp.*
+.vscode/
+.next/
+build/
+coverage/
+.prisma/
+generated/

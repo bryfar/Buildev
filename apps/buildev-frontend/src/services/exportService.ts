@@ -16,6 +16,8 @@ class ExportService {
     
     return [
       { name: 'src', type: 'directory', children: [
+        { name: 'blocks.json', type: 'file', content: '[]' },
+        { name: 'theme.css', type: 'file', content: '/* Design tokens */' },
         { name: 'components', type: 'directory', children: [
           { name: 'Header.vue', type: 'file', content: '<template>...</template>' },
           { name: 'MainContent.vue', type: 'file', content: '<template>...</template>' },

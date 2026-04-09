@@ -1,1 +1,0 @@
-import{d as o,o as c,c as s,A as t}from"./index-FKeRXGwE.js";import{_ as a}from"./_plugin-vue_export-helper-D9b95_W7.js";const p=o({__name:"BSSpacerBlock",props:{block:{}},setup(e){return(r,l)=>(c(),s("div",{class:"bs-spacer",style:t({height:e.block.props.height+"px"||"20px"})},null,4))}}),m=a(p,[["__scopeId","data-v-45250dbd"]]);export{m as default};

@@ -40,9 +40,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@buildersite/backend@workspace:apps/buildersite-backend":
+"@buildersite/backend@workspace:apps/buildev-backend":
   version: 0.0.0-use.local
-  resolution: "@buildersite/backend@workspace:apps/buildersite-backend"
+  resolution: "@buildersite/backend@workspace:apps/buildev-backend"
   dependencies:
     "@buildersite/domain": "workspace:*"
     "@prisma/client": "npm:5.22.0"
@@ -71,9 +71,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@buildersite/frontend@workspace:apps/buildersite-frontend":
+"@buildersite/frontend@workspace:apps/buildev-frontend":
   version: 0.0.0-use.local
-  resolution: "@buildersite/frontend@workspace:apps/buildersite-frontend"
+  resolution: "@buildersite/frontend@workspace:apps/buildev-frontend"
   dependencies:
     "@buildersite/sdk": "workspace:*"
     "@monaco-editor/loader": "npm:^1.7.0"
