@@ -47,16 +47,19 @@ corepack yarn dev:backend
 
 ## ▲ Deploy Frontend on Vercel
 
-For this monorepo, deploy the frontend app from `apps/buildev-frontend`:
+The repo includes a root [`vercel.json`](./vercel.json) so Vercel can build from the **repository root** (Vite needs `index.html` inside `apps/buildev-frontend`).
 
-1. Import the repository in Vercel.
-2. Set **Root Directory** to `apps/buildev-frontend`.
-3. Use:
-   - **Build Command**: `corepack yarn build`
-   - **Output Directory**: `dist`
-4. Add environment variable:
-   - `VITE_API_URL` = your deployed backend URL
-5. Redeploy after saving env vars.
+**Option A — Root directory = repo root (default)**
+
+1. Import the repository in Vercel and leave **Root Directory** empty (or `.`).
+2. Do not override Install / Build / Output in the dashboard (the root `vercel.json` sets them).
+3. Add `VITE_API_URL` = your deployed backend URL, then redeploy.
+
+**Option B — Root directory = `apps/buildev-frontend`**
+
+1. Set **Root Directory** to `apps/buildev-frontend`.
+2. **Build Command**: `corepack yarn build` · **Output Directory**: `dist`
+3. Add `VITE_API_URL` as above.
 
 You can copy `apps/buildev-frontend/.env.example` for local development.
 

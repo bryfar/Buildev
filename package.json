@@ -2,6 +2,7 @@
   "name": "@buildev/root",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -20,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "prisma": "5.22.0",
     "typescript": "^5.6.3",
+    "vue": "^3.5.15",
     "vue-router": "^4.3.0",
     "zod": "^3.23.8"
   },
