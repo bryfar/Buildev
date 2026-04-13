@@ -31,6 +31,22 @@ const routes = [
     component: () => import("./views/AIStudioView.vue"),
     meta: { requiresAuth: true },
   },
+  {
+    path: "/github/callback",
+    component: () => import("./views/GitHubCallbackView.vue"),
+    /** Público: debe cargar siempre tras redirect de GitHub; el POST exige Bearer en localStorage. */
+    meta: { public: true },
+  },
+  {
+    path: "/auth/github",
+    component: () => import("./views/OAuthLoginCallbackView.vue"),
+    meta: { public: true },
+  },
+  {
+    path: "/auth/google",
+    component: () => import("./views/OAuthLoginCallbackView.vue"),
+    meta: { public: true },
+  },
 ];
 
 const router = createRouter({
@@ -38,17 +54,18 @@ const router = createRouter({
   routes,
 });
 
-router.beforeEach((to: any) => {
-  // Authentication disabled for testing
-  /*
+router.beforeEach((to) => {
   const auth = useAuthStore();
+  if (to.meta.public) {
+    return true;
+  }
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
-    return "/login";
+    return { path: "/login", query: { redirect: to.fullPath } };
   }
   if (to.path === "/login" && auth.isAuthenticated) {
     return "/";
   }
-  */
+  return true;
 });
 
 export default router;

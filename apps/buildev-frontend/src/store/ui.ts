@@ -12,6 +12,14 @@ export const useUIStore = defineStore('ui', () => {
     applyTheme();
   }
 
+  /** Fija tema explícito (p. ej. desde ajustes de cuenta). */
+  function setTheme(next: 'light' | 'dark') {
+    if (theme.value === next) return;
+    theme.value = next;
+    localStorage.setItem('bs_theme', theme.value);
+    applyTheme();
+  }
+
   function applyTheme() {
     if (theme.value === 'dark') {
       document.documentElement.classList.add('dark');
@@ -26,6 +34,7 @@ export const useUIStore = defineStore('ui', () => {
   return {
     theme,
     toggleTheme,
+    setTheme,
     applyTheme
   };
 });

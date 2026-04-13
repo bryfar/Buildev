@@ -2,12 +2,12 @@
   <div class="callback-container">
     <div v-if="loading" class="loading-state">
       <div class="spinner"></div>
-      <p>Connecting to GitHub...</p>
+      <p>Conectando con GitHub...</p>
     </div>
     <div v-else-if="error" class="error-state">
       <div class="error-icon">×</div>
       <p>{{ error }}</p>
-      <button @click="goBack" class="btn-retry">Try Again</button>
+      <button type="button" @click="goHome" class="btn-retry">Volver al inicio</button>
     </div>
   </div>
 </template>
@@ -17,6 +17,10 @@ import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth";
 
+import { resolveApiBase } from "../utils/apiBase";
+
+const API = resolveApiBase(import.meta.env.VITE_API_URL);
+
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -25,34 +29,51 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 
 onMounted(async () => {
-  const code = route.query.code as string;
-  if (!code) {
-    error.value = "Authorization code missing from GitHub";
+  const code = typeof route.query.code === "string" ? route.query.code : "";
+  const state = typeof route.query.state === "string" ? route.query.state : "";
+  if (!code || !state) {
+    error.value = "Faltan parámetros de autorización de GitHub (code o state).";
+    loading.value = false;
+    return;
+  }
+
+  const bearer = auth.token;
+  if (!bearer) {
+    error.value =
+      "No hay sesión Buildev en este navegador. Inicia sesión, abre de nuevo «Vincular GitHub» y completa el flujo sin cerrar sesión.";
     loading.value = false;
     return;
   }
 
   try {
-    const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-    const res = await fetch(`${API}/api/auth/github/callback?code=${code}`);
-    const json = await res.json();
+    const res = await fetch(`${API}/api/auth/github/callback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${bearer}`,
+      },
+      body: JSON.stringify({ code, state }),
+    });
+    const json = (await res.json()) as {
+      ok?: boolean;
+      error?: string;
+      data?: { githubUsername?: string | null };
+    };
 
-    if (!json.ok) throw new Error(json.error ?? "Failed to link account");
+    if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "No se pudo vincular GitHub");
 
-    // Persist the github data in our store
-    auth.connectGitHub(json.data);
-
-    // Redirect to studio
-    router.push("/ai-studio");
-  } catch (err: any) {
-    error.value = err.message;
+    auth.setGitHubLinked(true, json.data?.githubUsername ?? null);
+    await auth.fetchGitHubStatus();
+    router.push("/");
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : "Error desconocido";
   } finally {
     loading.value = false;
   }
 });
 
-function goBack() {
-  router.push("/ai-studio");
+function goHome() {
+  router.push("/");
 }
 </script>
 
@@ -67,7 +88,8 @@ function goBack() {
   font-family: sans-serif;
 }
 
-.loading-state, .error-state {
+.loading-state,
+.error-state {
   text-align: center;
 }
 
@@ -82,7 +104,9 @@ function goBack() {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .error-icon {

@@ -23,35 +23,45 @@ export async function requireAuth(
     res: Response,
     next: NextFunction,
 ): Promise<void> {
-    let user = await prisma.user.findFirst();
-    if (!user) {
-        user = await prisma.user.create({
-            data: { 
-                email: "dev@buildersite.io", 
-                name: "Dev User", 
-                passwordHash: "noop" 
-            }
-        });
-    }
+    const siteIdFromHeader = req.headers["x-site-id"] as string | undefined;
+    const fallbackSiteId = siteIdFromHeader || "dev-site";
 
-    const siteIdFromHeader = req.headers["x-site-id"] as string;
-    let siteId = siteIdFromHeader;
-
-    if (!siteId) {
-        let defaultSite = await prisma.site.findFirst();
-        if (!defaultSite) {
-            defaultSite = await prisma.site.create({
-                data: { id: "dev-site", name: "Development Site" }
+    try {
+        let user = await prisma.user.findFirst();
+        if (!user) {
+            user = await prisma.user.create({
+                data: {
+                    email: "dev@buildersite.io",
+                    name: "Dev User",
+                    passwordHash: "noop"
+                }
             });
         }
-        siteId = defaultSite.id;
-    }
 
-    req.auth = {
-        userId: user.id,
-        siteId: siteId,
-        role: "admin",
-    };
+        let siteId = fallbackSiteId;
+        if (!siteIdFromHeader) {
+            let defaultSite = await prisma.site.findFirst();
+            if (!defaultSite) {
+                defaultSite = await prisma.site.create({
+                    data: { id: "dev-site", name: "Development Site" }
+                });
+            }
+            siteId = defaultSite.id;
+        }
+
+        req.auth = {
+            userId: user.id,
+            siteId,
+            role: "admin",
+        };
+    } catch {
+        // Allow local development to continue when DB is unavailable.
+        req.auth = {
+            userId: "dev-user",
+            siteId: fallbackSiteId,
+            role: "admin",
+        };
+    }
     next();
 }
 
