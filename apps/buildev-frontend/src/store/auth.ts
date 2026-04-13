@@ -156,7 +156,7 @@ export const useAuthStore = defineStore("auth", () => {
             const detail =
                 typeof json.error === "string"
                     ? json.error
-                    : `HTTP ${res.status}. Configura GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_LOGIN_REDIRECT_URI (misma URL autorizada en la GitHub OAuth App).`;
+                    : `HTTP ${res.status}. En el API: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_LOGIN_REDIRECT_URI o PUBLIC_APP_URL (misma URL que en la GitHub OAuth App).`;
             throw new Error(detail);
         }
         window.location.assign(json.data.url);

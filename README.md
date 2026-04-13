@@ -65,6 +65,21 @@ You can copy `apps/buildev-frontend/.env.example` for local development.
 
 ---
 
+## ▲ Deploy API (Express + Prisma) — Vercel u otro host
+
+El **frontend** en Vercel solo sirve estáticos; el **API** debe desplegarse aparte (otro proyecto Vercel, Railway, Fly, etc.) con `DATABASE_URL` y el resto de variables del backend.
+
+1. **Variables de entorno** del API: `DATABASE_URL`, `JWT_SECRET`, OAuth (`GITHUB_*`, `GOOGLE_*`), etc. Copia [`apps/buildev-backend/.env.example`](./apps/buildev-backend/.env.example). Para login GitHub/Google en producción, define **`PUBLIC_APP_URL`** (URL del front, sin `/` final) o las variables `GITHUB_LOGIN_REDIRECT_URI` / `GOOGLE_LOGIN_REDIRECT_URI` para que coincidan con las URIs registradas en GitHub y Google.
+2. **Migraciones en cada deploy**: el script `vercel-build` del backend ejecuta `prisma migrate deploy` (requiere `DATABASE_URL` disponible **durante el build** en Vercel: Production y Preview).
+3. **Monorepo (recomendado)**: en Vercel, **Root Directory** = raíz del repo y **Build Command** = `corepack yarn vercel-build:backend` · **Install Command** = la del root (p. ej. la de [`vercel.json`](./vercel.json) con Yarn 4).
+4. Si no puedes migrar en el build, ejecuta **una vez** en tu Postgres (Neon, Supabase, etc.):
+
+   `ALTER TABLE "User" ALTER COLUMN "passwordHash" DROP NOT NULL;`
+
+   (equivale a la migración `20260413120000_oauth_optional_password`).
+
+---
+
 ## 🧭 Understand Buildev Fast
 
 If you are new, read in this order:

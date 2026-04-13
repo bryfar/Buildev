@@ -2,7 +2,8 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -37,7 +38,7 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   name         String
-  /** Null si el usuario solo usa OAuth (Google/GitHub login). */
+  /// Null si el usuario solo usa OAuth (Google/GitHub login).
   passwordHash String?
   role         String   @default("editor") // admin | editor | viewer
   siteId       String?
@@ -45,7 +46,7 @@ model User {
   createdAt    DateTime  @default(now())
   ownedSites   Site[]    @relation("SiteOwner")
 
-  /** OAuth access token for GitHub API (repo scope). */
+  /// Token OAuth de GitHub API (scope repo).
   githubAccessToken String?
   githubUsername    String?
 

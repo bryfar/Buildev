@@ -3,32 +3,21 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../services/db";
 import { signToken } from "../middleware/auth";
+import { githubLoginRedirectUri, googleLoginRedirectUri } from "../config/oauthEnv";
+import { oauthUserDbErrorResponse } from "../utils/oauthUserDbError";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "buildersite_dev_secret";
 const GITHUB_CLIENT_ID = (process.env.GITHUB_CLIENT_ID ?? "").trim();
 const GITHUB_CLIENT_SECRET = (process.env.GITHUB_CLIENT_SECRET ?? "").trim();
-/** Debe coincidir byte a byte con la URL en la GitHub OAuth App (autorización “login”). */
-const GITHUB_LOGIN_REDIRECT_URI = (
-    process.env.GITHUB_LOGIN_REDIRECT_URI ?? "http://localhost:5173/auth/github"
-).trim();
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
 const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
-/** URI autorizada en Google Cloud Console → Credenciales → OAuth 2.0 Client ID. */
-const GOOGLE_LOGIN_REDIRECT_URI = (
-    process.env.GOOGLE_LOGIN_REDIRECT_URI ?? "http://localhost:5173/auth/google"
-).trim();
 
 const OAuthCodeSchema = z.object({
     code: z.string().min(1),
     state: z.string().min(1),
 });
 
-/**
- * Crea un sitio por defecto y lo asocia al usuario si carece de `siteId`.
- *
- * @param userId ID de usuario
- * @returns ID del sitio activo
- */
+/** Sitio por defecto si el usuario no tiene `siteId`. */
 async function ensureUserHasSite(userId: string): Promise<string> {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user?.siteId) return user.siteId;
@@ -46,12 +35,7 @@ interface OAuthProfileInput {
     githubUsername?: string | null;
 }
 
-/**
- * Busca usuario por email o crea uno con sitio por defecto (OAuth).
- *
- * @param input Email, nombre y datos opcionales de GitHub
- * @returns IDs y rol para emitir JWT
- */
+/** Usuario OAuth por email o creación con sitio nuevo. */
 async function findOrCreateOAuthUser(input: OAuthProfileInput): Promise<{ userId: string; siteId: string; role: string }> {
     const email = input.email.toLowerCase().trim();
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -78,7 +62,6 @@ async function findOrCreateOAuthUser(input: OAuthProfileInput): Promise<{ userId
         data: {
             email,
             name: input.name.trim() || email.split("@")[0] || "Usuario",
-            passwordHash: null,
             role: "admin",
             siteId: site.id,
             githubAccessToken: input.githubAccessToken ?? null,
@@ -88,11 +71,7 @@ async function findOrCreateOAuthUser(input: OAuthProfileInput): Promise<{ userId
     return { userId: user.id, siteId: site.id, role: user.role };
 }
 
-/**
- * Registra rutas públicas de inicio de sesión con Google/GitHub.
- *
- * @param r Router `/api/auth`
- */
+/** Rutas públicas de login Google/GitHub bajo `/api/auth`. */
 export function registerSocialLoginRoutes(r: Router): void {
     r.get("/oauth/login-ready", (_req: Request, res: Response) => {
         const github = Boolean(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET);
@@ -103,12 +82,8 @@ export function registerSocialLoginRoutes(r: Router): void {
                 github,
                 google,
                 hints: {
-                    github: github
-                        ? null
-                        : "En el backend (.env): GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y en la GitHub OAuth App las URIs de callback (vincular + login).",
-                    google: google
-                        ? null
-                        : "En el backend (.env): GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET y en Google Cloud la URI autorizada GOOGLE_LOGIN_REDIRECT_URI.",
+                    github: github ? null : "Credenciales GitHub + URIs en la OAuth App; producción: GITHUB_LOGIN_REDIRECT_URI o PUBLIC_APP_URL.",
+                    google: google ? null : "Credenciales Google + URI en Cloud Console; producción: GOOGLE_LOGIN_REDIRECT_URI o PUBLIC_APP_URL.",
                 },
             },
         });
@@ -120,9 +95,10 @@ export function registerSocialLoginRoutes(r: Router): void {
             return;
         }
         const state = jwt.sign({ purpose: "github_login" }, JWT_SECRET, { expiresIn: "15m" });
+        const ghRedirect = githubLoginRedirectUri();
         const params = new URLSearchParams({
             client_id: GITHUB_CLIENT_ID,
-            redirect_uri: GITHUB_LOGIN_REDIRECT_URI,
+            redirect_uri: ghRedirect,
             scope: "read:user user:email",
             state,
             allow_signup: "true",
@@ -146,6 +122,7 @@ export function registerSocialLoginRoutes(r: Router): void {
                 res.status(400).json({ ok: false, error: "Estado OAuth inválido." });
                 return;
             }
+            const ghRedirect = githubLoginRedirectUri();
             const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
                 method: "POST",
                 headers: { Accept: "application/json", "Content-Type": "application/json" },
@@ -153,7 +130,7 @@ export function registerSocialLoginRoutes(r: Router): void {
                     client_id: GITHUB_CLIENT_ID,
                     client_secret: GITHUB_CLIENT_SECRET,
                     code: parsed.data.code,
-                    redirect_uri: GITHUB_LOGIN_REDIRECT_URI,
+                    redirect_uri: ghRedirect,
                 }),
             });
             const tokenJson = (await tokenRes.json()) as {
@@ -186,7 +163,16 @@ export function registerSocialLoginRoutes(r: Router): void {
                 }),
             ]);
             const ghUser = (await userRes.json()) as { login?: string; name?: string | null };
-            const emails = (await emailsRes.json()) as Array<{ email: string; primary?: boolean; verified?: boolean }>;
+            const emailsRaw: unknown = await emailsRes.json();
+            if (!Array.isArray(emailsRaw)) {
+                res.status(400).json({
+                    ok: false,
+                    error:
+                        "GitHub no devolvió la lista de emails (revisa scope read:user user:email y que la cuenta tenga email público o verificado).",
+                });
+                return;
+            }
+            const emails = emailsRaw as Array<{ email: string; primary?: boolean; verified?: boolean }>;
             const primary =
                 emails.find((e) => e.primary && e.verified) ?? emails.find((e) => e.verified) ?? emails[0];
             if (!primary?.email) {
@@ -202,8 +188,8 @@ export function registerSocialLoginRoutes(r: Router): void {
             const token = signToken({ userId, siteId, role });
             res.json({ ok: true, data: { token, userId, siteId, role } });
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "OAuth fallido";
-            res.status(400).json({ ok: false, error: msg });
+            const { status, message } = oauthUserDbErrorResponse(err);
+            res.status(status).json({ ok: false, error: message });
         }
     });
 
@@ -213,9 +199,10 @@ export function registerSocialLoginRoutes(r: Router): void {
             return;
         }
         const state = jwt.sign({ purpose: "google_login" }, JWT_SECRET, { expiresIn: "15m" });
+        const googleRedirect = googleLoginRedirectUri();
         const params = new URLSearchParams({
             client_id: GOOGLE_CLIENT_ID,
-            redirect_uri: GOOGLE_LOGIN_REDIRECT_URI,
+            redirect_uri: googleRedirect,
             response_type: "code",
             scope: "openid email profile",
             state,
@@ -242,11 +229,12 @@ export function registerSocialLoginRoutes(r: Router): void {
                 res.status(400).json({ ok: false, error: "Estado OAuth inválido." });
                 return;
             }
+            const googleRedirect = googleLoginRedirectUri();
             const body = new URLSearchParams({
                 code: parsed.data.code,
                 client_id: GOOGLE_CLIENT_ID,
                 client_secret: GOOGLE_CLIENT_SECRET,
-                redirect_uri: GOOGLE_LOGIN_REDIRECT_URI,
+                redirect_uri: googleRedirect,
                 grant_type: "authorization_code",
             });
             const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -291,8 +279,8 @@ export function registerSocialLoginRoutes(r: Router): void {
             const token = signToken({ userId, siteId, role });
             res.json({ ok: true, data: { token, userId, siteId, role } });
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : "OAuth fallido";
-            res.status(400).json({ ok: false, error: msg });
+            const { status, message } = oauthUserDbErrorResponse(err);
+            res.status(status).json({ ok: false, error: message });
         }
     });
 }
