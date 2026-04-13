@@ -61,6 +61,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.2 7.6 2.4-7.6 2.4-2.4 7.2-2.4-7.2-7.6-2.4 7.6-2.4L12 2z" fill="var(--brand-primary)"/></svg>
           <span class="ai-label">AI Power</span>
         </button>
+        <button class="btn-ai-vision" @click="isVisionOpen = true" title="Open Code / Claude Vision">
+          <span class="sparkle">✨</span>
+          Vision Scan
+        </button>
       </div>
 
       <div class="navbar-right">
