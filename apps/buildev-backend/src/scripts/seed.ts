@@ -1,7 +1,5 @@
-import { PrismaClient } from "../prisma-client";
+import { prisma } from "../services/db";
 import bcrypt from "bcryptjs";
-
-const prisma = new PrismaClient();
 
 async function main() {
     const siteName = "Buildersite Dev";

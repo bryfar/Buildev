@@ -145,7 +145,18 @@
 import { ref, onMounted, nextTick, computed } from 'vue';
 import { aiService } from '../../services/aiService';
 
-const emit = defineEmits(['complete', 'cancel']);
+const emit = defineEmits<{
+  complete: [{
+    name: string;
+    prompt: string;
+    architecture: unknown;
+    projectType: string;
+    stack: string;
+    backend: string;
+    cms: string;
+  }];
+  cancel: [];
+}>();
 
 const chatViewport = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
@@ -158,8 +169,13 @@ const messages = ref<{ role: 'user' | 'assistant'; content: string; type?: 'text
 
 const steps = [
   {
+    question: 'What project type do you want to create?',
+    suggestions: ['Landing page', 'Multisite', 'CMS'],
+    field: 'projectType'
+  },
+  {
     question: "What are we building? Describe it in your own words...",
-    suggestions: ['E-commerce', 'SaaS dashboard', 'Portfolio', 'Marketing landing'],
+    suggestions: ['E-commerce', 'SaaS dashboard', 'Portfolio', 'Content platform'],
     field: 'type'
   },
   {
@@ -169,8 +185,23 @@ const steps = [
   },
   {
     question: 'What should ship in v1?',
-    suggestions: ['Auth', 'Analytics', 'Payments', 'AI chat'],
+    suggestions: ['Auth', 'Analytics', 'Payments', 'CMS'],
     field: 'features'
+  },
+  {
+    question: 'Pick a frontend framework stack',
+    suggestions: ['Next.js', 'Nuxt', 'SvelteKit', 'Astro', 'Remix', 'Vite + React'],
+    field: 'stack'
+  },
+  {
+    question: 'Pick a backend stack',
+    suggestions: ['Node + Express', 'NestJS', 'Fastify', 'Django', 'Laravel', 'No backend'],
+    field: 'backend'
+  },
+  {
+    question: 'Need CMS support?',
+    suggestions: ['Strapi', 'Directus', 'Payload', 'Sanity', 'Contentful', 'No CMS'],
+    field: 'cms'
   },
   {
     question: 'Last step: what should we call this project?',
@@ -231,7 +262,10 @@ async function startGeneration() {
 
   try {
     genSteps.value[0].active = true;
-    const prompt = `A ${responses.value.type} with ${responses.value.aesthetic}. Features: ${responses.value.features}. Name: ${responses.value.name}`;
+    const projectType = responses.value.projectType || 'Landing page';
+    const isCmsProject = projectType.toLowerCase() === 'cms';
+    const selectedStack = isCmsProject ? 'astro' : responses.value.stack;
+    const prompt = `Project type: ${projectType}. A ${responses.value.type} with ${responses.value.aesthetic}. Features: ${responses.value.features}. Frontend: ${selectedStack}. Backend: ${responses.value.backend}. CMS: ${responses.value.cms}. Name: ${responses.value.name}`;
     const architecture = await aiService.generateArchitecture(prompt);
     genSteps.value[0].done = true;
     genSteps.value[0].active = false;
@@ -255,7 +289,11 @@ async function startGeneration() {
     emit('complete', {
       name: responses.value.name,
       prompt,
-      architecture
+      architecture,
+      projectType,
+      stack: selectedStack,
+      backend: responses.value.backend,
+      cms: responses.value.cms
     });
   } catch (err) {
     alert('Architecting failed: ' + err);

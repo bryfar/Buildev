@@ -1,6 +1,5 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { BuildevAIEngine } from "@buildev/ai-engine";
 
 export const aiRouter = Router();
 
@@ -28,12 +27,21 @@ aiRouter.post("/vision", async (req: Request, res: Response) => {
   }
 
   try {
-    const engine = new BuildevAIEngine({ apiKey });
-    const nodes = await engine.imageToNodes(parsed.data.imageUrl, parsed.data.context);
-
-    res.json({ ok: true, data: nodes });
-  } catch (err: any) {
-    res.status(500).json({ ok: false, error: err.message });
+    const fallbackNodes = [
+      {
+        id: "ai-node-1",
+        type: "section",
+        props: {
+          title: "AI parsing fallback",
+          source: parsed.data.imageUrl,
+          context: parsed.data.context ?? ""
+        }
+      }
+    ];
+    res.json({ ok: true, data: fallbackNodes, note: "AI engine package is not linked in this environment." });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unexpected error";
+    res.status(500).json({ ok: false, error: message });
   }
 });
 

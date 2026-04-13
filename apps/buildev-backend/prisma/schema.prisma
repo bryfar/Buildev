@@ -26,6 +26,9 @@ model Site {
   assets         Asset[]
   contentModels  ContentModel[]
   events         Event[]
+  gitConnection  GitConnection?
+  gitActivities  GitActivity[]
+  deployments    DeploymentRecord[]
   userId         String?   // Added userId to Site
   owner          User?     @relation("SiteOwner", fields: [userId], references: [id])
 }
@@ -34,12 +37,17 @@ model User {
   id           String   @id @default(uuid())
   email        String   @unique
   name         String
-  passwordHash String
+  /** Null si el usuario solo usa OAuth (Google/GitHub login). */
+  passwordHash String?
   role         String   @default("editor") // admin | editor | viewer
   siteId       String?
   site         Site?     @relation(fields: [siteId], references: [id])
   createdAt    DateTime  @default(now())
   ownedSites   Site[]    @relation("SiteOwner")
+
+  /** OAuth access token for GitHub API (repo scope). */
+  githubAccessToken String?
+  githubUsername    String?
 
   publications Publication[]
 }
@@ -140,4 +148,67 @@ model Event {
   createdAt   DateTime @default(now())
 
   @@index([siteId, pageId, type])
+}
+
+model GitConnection {
+  id               String   @id @default(uuid())
+  siteId           String   @unique
+  site             Site     @relation(fields: [siteId], references: [id])
+
+  provider         String   @default("github") // github
+  repoFullName     String
+  defaultBranch    String   @default("main")
+  exportPath       String   @default(".buildev/buildev-site.json")
+
+  activeBranch     String?  // branch currently used by app
+
+  vercelProjectId  String?
+  vercelTeamId     String?
+  productionDomain String?
+
+  autoPreviewOnPush Boolean @default(true)
+  autoDeployOnPr    Boolean @default(true)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model GitActivity {
+  id            String   @id @default(uuid())
+  siteId        String
+  site          Site     @relation(fields: [siteId], references: [id])
+
+  type          String   // import | pull | push | pr_opened | branch_created | restore | deploy
+  status        String   @default("success") // success | failed | pending
+  actor         String?
+
+  branch        String?
+  baseBranch    String?
+  commitSha     String?
+  prNumber      Int?
+
+  diffSummaryJson String? // JSON summary or diff metadata
+  snapshotJson    String? // JSON export snapshot for rollback/diff
+
+  createdAt     DateTime @default(now())
+
+  @@index([siteId, createdAt])
+}
+
+model DeploymentRecord {
+  id          String   @id @default(uuid())
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id])
+
+  provider    String   @default("vercel") // vercel
+  environment String   // preview | production
+  url         String
+  status      String   @default("queued") // queued | building | ready | error
+
+  branch      String?
+  commitSha   String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([siteId, createdAt])
 }

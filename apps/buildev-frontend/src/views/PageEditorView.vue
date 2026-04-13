@@ -129,10 +129,18 @@
                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
                <span>Create GitHub Repo</span>
              </div>
+             <div class="dropdown-item-v12" @click="isGitSyncModalOpen = true">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="4"/><path d="M2 12v6a10 4 0 0 0 20 0v-6"/></svg>
+               <span>Git: importar y sincronizar</span>
+             </div>
            </div>
         </div>
       </div>
     </header>
+
+    <div v-if="!isAIBuilding && gitRemoteStale" class="git-remote-banner" role="status">
+      Hay cambios nuevos en el repositorio enlazado. Abre <strong>Publish → Git: importar y sincronizar</strong> y pulsa Pull.
+    </div>
 
     <div class="main-editor">
       <!-- IDE MODE: Activity Bar -->
@@ -268,9 +276,14 @@
                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v12M18 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM6 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM18 3v6"/></svg>
                main*
             </div>
-            <div class="status-item sync" title="Sync changes">
+            <button
+              type="button"
+              class="status-item sync status-git-sync"
+              title="Git: commit, ramas, push y pull request"
+              @click="isGitSyncModalOpen = true"
+            >
                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            </div>
+            </button>
           </div>
           <div class="status-right" v-if="isCodeMode">
              <div class="status-item">Ln {{ ideCursor.line }}, Col {{ ideCursor.column }}</div>
@@ -299,6 +312,14 @@
         :projectName="store.currentPage?.name || 'project'" 
         @close="isGithubModalOpen = false" 
       />
+      <BSGitSyncModal
+        v-if="isGitSyncModalOpen && gitSyncSiteId"
+        :site-id="gitSyncSiteId"
+        @close="closeGitSyncModal"
+        @synced="handleGitSynced"
+        @requestDeploy="(e) => requestPreviewDeploy(e.branch)"
+      />
+      <BSToastHost :toasts="toasts" />
       <BSBubbleMenu />
     </div>
   </div>
@@ -321,7 +342,12 @@ import BSMultiplayerCursors from "../components/canvas/BSMultiplayerCursors.vue"
 import BSShareModal from "../components/modals/BSShareModal.vue";
 import BSBubbleMenu from "../components/canvas/BSBubbleMenu.vue";
 import BSGithubModal from "../components/modals/BSGithubModal.vue";
+import BSGitSyncModal from "../components/modals/BSGitSyncModal.vue";
+import BSToastHost from "../components/ui/BSToastHost.vue";
 import BSAIConversationOverlay from "../components/editor/BSAIConversationOverlay.vue";
+import { useAuthStore } from "../store/auth";
+import { gitService, GITHUB_PAT_STORAGE_KEY } from "../services/gitService";
+import { deployService, VERCEL_TOKEN_STORAGE_KEY } from "../services/deployService";
 
 
 import { exportToHTML } from "../utils/exporter";
@@ -331,6 +357,7 @@ const route = useRoute();
 const router = useRouter();
 const store = usePagesStore();
 const ui = useUIStore();
+const auth = useAuthStore();
 
 function goToDashboard() {
   router.push('/');
@@ -353,6 +380,97 @@ const isAIActionOpen = ref(false);
 const isAIComposeOpen = ref(false);
 const isTerminalCollapsed = ref(false);
 const isGithubModalOpen = ref(false);
+const isGitSyncModalOpen = ref(false);
+const gitRemoteStale = ref(false);
+
+const gitSyncSiteId = computed(() => store.currentSiteId ?? "");
+
+type ToastKind = "info" | "success" | "warning" | "error";
+type ToastItem = { id: string; kind: ToastKind; title: string; message?: string; href?: string };
+const toasts = ref<ToastItem[]>([]);
+
+function pushToast(toast: Omit<ToastItem, "id">) {
+  const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  toasts.value = [{ id, ...toast }, ...toasts.value].slice(0, 4);
+  setTimeout(() => {
+    toasts.value = toasts.value.filter((t) => t.id !== id);
+  }, 9000);
+}
+
+async function requestPreviewDeploy(branch: string) {
+  const siteId = store.currentSiteId;
+  if (!siteId) return;
+  const token = localStorage.getItem(VERCEL_TOKEN_STORAGE_KEY) ?? "";
+  if (!token) {
+    pushToast({
+      kind: "warning",
+      title: "Preview deploy no configurado",
+      message: `Guarda un token de Vercel en localStorage (${VERCEL_TOKEN_STORAGE_KEY}).`,
+    });
+    return;
+  }
+  try {
+    pushToast({ kind: "info", title: "Vercel", message: "Creando preview deployment..." });
+    const deployed = await deployService.previewDeploy(auth.authHeaders(), siteId, token, branch);
+    pushToast({ kind: "success", title: "Preview deploy listo", message: deployed.url, href: deployed.url });
+  } catch (e: unknown) {
+    pushToast({ kind: "error", title: "Preview deploy falló", message: e instanceof Error ? e.message : "Error" });
+  }
+}
+
+async function handleGitSynced() {
+  const pageId = route.params.id as string;
+  await store.loadSites();
+  await store.loadPages();
+  await store.loadComponents();
+  if (pageId) {
+    await store.loadPage(pageId);
+  }
+}
+
+function closeGitSyncModal() {
+  isGitSyncModalOpen.value = false;
+  startGitPollIfEnabled();
+}
+
+let gitPollTimer: ReturnType<typeof setInterval> | null = null;
+
+function clearGitPoll() {
+  if (gitPollTimer) {
+    clearInterval(gitPollTimer);
+    gitPollTimer = null;
+  }
+}
+
+function patOrOauth(): string | undefined {
+  const t = localStorage.getItem(GITHUB_PAT_STORAGE_KEY)?.trim();
+  return t && t.length > 0 ? t : undefined;
+}
+
+async function refreshGitRemoteAfterEdit(): Promise<void> {
+  const sid = store.currentSiteId;
+  if (!sid || localStorage.getItem(`bs_git_poll_${sid}`) === "0") return;
+  try {
+    const st = await gitService.getStatus(auth.authHeaders(), sid, patOrOauth());
+    gitRemoteStale.value = Boolean(st.linked && st.inSync === false);
+  } catch {
+    gitRemoteStale.value = false;
+  }
+}
+
+function startGitPollIfEnabled() {
+  clearGitPoll();
+  const sid = store.currentSiteId;
+  if (!sid || localStorage.getItem(`bs_git_poll_${sid}`) === "0") return;
+  gitPollTimer = setInterval(async () => {
+    try {
+      const st = await gitService.getStatus(auth.authHeaders(), sid, patOrOauth());
+      gitRemoteStale.value = Boolean(st.linked && st.inSync === false);
+    } catch {
+      gitRemoteStale.value = false;
+    }
+  }, 25000);
+}
 
 
 
@@ -536,7 +654,12 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   }
 }
 
-async function handleAISubmit(_query: string) {
+interface AIConversationRequest {
+  query: string;
+  model: string;
+}
+
+async function handleAISubmit(_input: string | AIConversationRequest) {
   isAIBuilding.value = true;
   window.setTimeout(() => {
     isAIBuilding.value = false;
@@ -679,13 +802,23 @@ onMounted(() => {
   window.addEventListener('keydown', handleGlobalKeydown);
   window.addEventListener('keydown', handleKeyDown, true);
   window.addEventListener('keyup', handleKeyUp, true);
+  startGitPollIfEnabled();
+  void refreshGitRemoteAfterEdit();
 });
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleGlobalKeydown);
   window.removeEventListener('keydown', handleKeyDown, true);
   window.removeEventListener('keyup', handleKeyUp, true);
+  clearGitPoll();
 });
+
+watch(
+  () => store.currentSiteId,
+  () => {
+    startGitPollIfEnabled();
+  },
+);
 
 function downloadHTML() {
   if (!store.currentPage) return;
@@ -698,10 +831,13 @@ function downloadHTML() {
   a.click();
 }
 
-let saveTimeout: any = null;
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 watch(() => store.currentPage?.blocks, () => {
   if (saveTimeout) clearTimeout(saveTimeout);
-  saveTimeout = setTimeout(() => store.savePage(), 2000);
+  saveTimeout = setTimeout(async () => {
+    await store.savePage();
+    await refreshGitRemoteAfterEdit();
+  }, 2000);
 }, { deep: true });
 </script>
 
@@ -714,6 +850,19 @@ watch(() => store.currentPage?.blocks, () => {
   color: var(--text-main);
   font-family: 'Inter', -apple-system, sans-serif;
   overflow: hidden;
+}
+
+.git-remote-banner {
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 12px;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.28);
+}
+.theme-dark .git-remote-banner {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.12);
 }
 
 /* --- REORGANIZED TOP BAR --- */
@@ -1120,6 +1269,7 @@ watch(() => store.currentPage?.blocks, () => {
 .status-item:hover { background: rgba(255,255,255,0.1); }
 .status-item.branch { background: rgba(0,0,0,0.1); }
 .status-item.sync { margin-left: -4px; }
+button.status-git-sync { font: inherit; color: inherit; background: transparent; }
 
 .activity-bar { width: 48px; background: #333333; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 12px 0; flex-shrink: 0; }
 .activity-item { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.4); cursor: pointer; transition: color 0.2s; position: relative; }

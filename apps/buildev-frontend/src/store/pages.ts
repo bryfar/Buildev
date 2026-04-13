@@ -380,6 +380,22 @@ export const usePagesStore = defineStore("pages", () => {
     isLoading.value = false;
   }
 
+  async function deleteComponent(id: string) {
+    isLoading.value = true;
+    try {
+      const res = await fetch(`${API}/api/components/${id}`, {
+        method: "DELETE",
+        headers: getCommonHeaders(),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        components.value = components.value.filter((component: { id: string }) => component.id !== id);
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   async function loadAssets() {
     const res = await fetch(`${API}/api/assets`, { headers: auth.authHeaders() });
     const json = await res.json();
@@ -419,7 +435,7 @@ export const usePagesStore = defineStore("pages", () => {
     loadPages, loadPage, createPage, savePage, publishPage,
     addBlock, updateBlock, removeBlock, moveBlock, nudgeBlock, duplicateBlock, selectBlock, getSelectedBlock,
     undo, redo, draggingBlockType, draggingSymbolId, handleDrop, deletePage, duplicatePage, updatePage,
-    currentBreakpoint, components, assets, loadComponents, saveAsComponent, loadAssets,
+    currentBreakpoint, components, assets, loadComponents, saveAsComponent, deleteComponent, loadAssets,
     sites, currentSiteId, loadSites, createSite, selectSite, getCommonHeaders
   };
 });

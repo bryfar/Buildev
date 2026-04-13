@@ -9,6 +9,8 @@ import { assetsRouter } from "./routes/assets";
 import { sitesRouter } from "./routes/sites";
 import { contentModelRouter } from "./routes/content-model";
 import { publicRouter } from "./routes/public";
+import { gitRouter } from "./routes/git";
+import { deployRouter } from "./routes/deploy";
 
 const app = express();
 
@@ -23,6 +25,8 @@ app.use("/api/sites", sitesRouter);
 app.use("/api/components", componentsRouter);
 app.use("/api/assets", assetsRouter);
 app.use("/api/content-models", contentModelRouter);
+app.use("/api/git", gitRouter);
+app.use("/api/deploy", deployRouter);
 
 // ─── Rutas públicas del SDK (requieren API Key) ───────────────────────────────
 app.use("/api/public", publicRouter);
@@ -34,8 +38,15 @@ app.get("/api/health", (_req, res) => {
 
 // ─── Arranque ─────────────────────────────────────────────────────────────────
 const PORT = Number(process.env.PORT) || 4000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[Buildersite Backend] ▶  http://localhost:${PORT}`);
-  console.log("  Rutas privadas: /api/auth | /api/pages | /api/sites | /api/components | /api/content-models");
+  console.log("  Rutas privadas: /api/auth | /api/pages | /api/sites | /api/components | /api/content-models | /api/git");
   console.log("  Rutas SDK:      /api/public/page | /api/public/events | /api/public/page/:id/publications");
+});
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `[Buildersite Backend] El puerto ${PORT} ya está en uso. Cierra la otra instancia del API o define otra PORT en apps/buildev-backend/.env y VITE_DEV_API_PROXY en el front.`,
+    );
+  }
 });

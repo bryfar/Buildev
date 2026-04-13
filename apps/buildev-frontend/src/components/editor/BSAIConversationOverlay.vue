@@ -6,6 +6,14 @@
           <span class="badge">Composer</span>
           <span class="head-title">Agent</span>
         </div>
+        <div class="model-picker-wrap">
+          <label class="model-label" for="ai-model-picker">Model</label>
+          <select id="ai-model-picker" v-model="selectedModel" class="model-picker">
+            <option v-for="model in modelOptions" :key="model.id" :value="model.id">
+              {{ model.name }}
+            </option>
+          </select>
+        </div>
         <div class="head-actions">
           <button type="button" class="ghost-icon" title="Close" @click="$emit('close')">×</button>
         </div>
@@ -63,12 +71,21 @@ const props = defineProps<{
   prompt?: string;
 }>();
 
-const emit = defineEmits(['submit', 'close']);
+const emit = defineEmits<{
+  submit: [{ query: string; model: string }];
+  close: [];
+}>();
 
 const scrollRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 const draft = ref('');
 const isThinking = ref(false);
+const modelOptions = [
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
+  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet' },
+  { id: 'gpt-4o', name: 'GPT-4o' }
+];
+const selectedModel = ref(modelOptions[0].id);
 
 const thread = ref<{ role: 'user' | 'assistant'; text: string }[]>([]);
 
@@ -88,6 +105,7 @@ watch(
       seedThread();
       isThinking.value = false;
       draft.value = '';
+      selectedModel.value = modelOptions[0].id;
       nextTick(() => {
         inputRef.value?.focus();
         scrollToEnd();
@@ -114,7 +132,7 @@ function submit() {
   if (!q || isThinking.value) return;
   thread.value.push({ role: 'user', text: q });
   draft.value = '';
-  emit('submit', q);
+  emit('submit', { query: q, model: selectedModel.value });
   isThinking.value = true;
   scrollToEnd();
 
@@ -175,6 +193,7 @@ function submit() {
   justify-content: space-between;
   padding: 12px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 12px;
 }
 .head-left {
   display: flex;
@@ -195,6 +214,24 @@ function submit() {
   font-size: 14px;
   font-weight: 600;
   color: rgba(255, 255, 255, 0.9);
+}
+.model-picker-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.model-label {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.model-picker {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 .ghost-icon {
   width: 32px;

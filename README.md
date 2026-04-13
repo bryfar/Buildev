@@ -1,6 +1,6 @@
 # Buildev — Open Source AI Web Builder ✨
 
-![Buildev Banner](/Portada.png)
+![Buildev Banner](./portada.png)
 
 > The VS Code of web builders. Design visually. Export clean code.
 > **Open source, AI-native, multi-framework, zero vendor lock-in.**
