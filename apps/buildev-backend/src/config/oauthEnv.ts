@@ -1,4 +1,18 @@
 /**
+ * Callback de GitHub al vincular la cuenta (ruta front `/github/callback`, scope repo).
+ * Prioridad: `GITHUB_OAUTH_CALLBACK_URL` → `PUBLIC_APP_URL` + `/github/callback` → localhost.
+ *
+ * @returns URI exacta en la misma GitHub OAuth App que el login
+ */
+export function githubRepoLinkRedirectUri(): string {
+    const explicit = (process.env.GITHUB_OAUTH_CALLBACK_URL ?? "").trim();
+    if (explicit) return explicit.replace(/\/$/, "");
+    const pub = (process.env.PUBLIC_APP_URL ?? "").trim().replace(/\/$/, "");
+    if (pub) return `${pub}/github/callback`;
+    return "http://localhost:5173/github/callback";
+}
+
+/**
  * Resuelve la URL de callback del login con GitHub.
  * Prioridad: `GITHUB_LOGIN_REDIRECT_URI` → `PUBLIC_APP_URL` + `/auth/github` → localhost (dev).
  *

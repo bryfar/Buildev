@@ -59,9 +59,25 @@
       <p class="lead">Conecta proveedores externos usados por importación, Git y despliegue.</p>
       <div v-if="!props.githubOAuthReady" class="banner-warn">
         <strong>GitHub OAuth no está configurado en el servidor.</strong>
-        Define <code>GITHUB_CLIENT_ID</code>, <code>GITHUB_CLIENT_SECRET</code> y
-        <code>GITHUB_OAUTH_CALLBACK_URL</code> (debe coincidir con la URL de callback en la app de GitHub). Reinicia el
-        API.
+        <p v-if="props.githubOAuthHint" class="oauth-hint">{{ props.githubOAuthHint }}</p>
+        <p class="oauth-lead">En el backend (variables de entorno o <code>apps/buildev-backend/.env</code>):</p>
+        <ul class="oauth-steps">
+          <li>
+            <code>GITHUB_CLIENT_ID</code> y <code>GITHUB_CLIENT_SECRET</code> (obligatorios; sin ellos no aparece
+            «listo»).
+          </li>
+          <li>
+            <code>PUBLIC_APP_URL</code>: URL del front <strong>sin</strong> barra final (p. ej.
+            <code>https://tu-app.vercel.app</code>). El API usa entonces
+            <code>…/github/callback</code> (vincular repo) y <code>…/auth/github</code> (login).
+          </li>
+          <li>
+            O define a mano <code>GITHUB_OAUTH_CALLBACK_URL</code> (vincular) y
+            <code>GITHUB_LOGIN_REDIRECT_URI</code> (login); deben coincidir con las URLs autorizadas en la
+            <strong>misma</strong> GitHub OAuth App.
+          </li>
+          <li>Reinicia el API tras guardar cambios.</li>
+        </ul>
       </div>
       <div class="card wide">
         <div class="int-head">
@@ -126,17 +142,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, withDefaults } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "../../store/auth";
 import { useUIStore } from "../../store/ui";
 import type { AccountSettingsSection } from "./accountSettingsTypes";
 
-const props = defineProps<{
-    section: AccountSettingsSection;
-    githubOAuthReady: boolean;
-    dark: boolean;
-}>();
+const props = withDefaults(
+    defineProps<{
+        section: AccountSettingsSection;
+        githubOAuthReady: boolean;
+        dark: boolean;
+        githubOAuthHint?: string | null;
+    }>(),
+    { githubOAuthHint: null },
+);
 
 const emit = defineEmits<{
     go: [AccountSettingsSection];

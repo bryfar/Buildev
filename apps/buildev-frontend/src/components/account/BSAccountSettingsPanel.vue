@@ -78,6 +78,7 @@
               <BSAccountSettingsMain
                 :section="section"
                 :github-oauth-ready="githubOAuthReady"
+                :github-oauth-hint="githubOAuthHint"
                 :dark="ui.theme === 'dark'"
                 @go="onGo"
               />
@@ -104,6 +105,7 @@ const ui = useUIStore();
 const API = resolveApiBase(import.meta.env.VITE_API_URL);
 const section = ref<AccountSettingsSection>("overview");
 const githubOAuthReady = ref(true);
+const githubOAuthHint = ref<string | null>(null);
 
 const userInitial = computed(() => {
     const n = auth.userName?.trim() || auth.userEmail?.trim() || "?";
@@ -130,10 +132,19 @@ function onGo(s: AccountSettingsSection) {
 async function loadOauthReady() {
     try {
         const res = await fetch(`${API}/api/auth/github/oauth-ready`);
-        const json = (await res.json()) as { ok?: boolean; data?: { ready?: boolean } };
+        const json = (await res.json()) as {
+            ok?: boolean;
+            data?: {
+                ready?: boolean;
+                hint?: string | null;
+            };
+        };
         githubOAuthReady.value = Boolean(json.ok && json.data?.ready);
+        githubOAuthHint.value =
+            typeof json.data?.hint === "string" && json.data.hint.length > 0 ? json.data.hint : null;
     } catch {
         githubOAuthReady.value = false;
+        githubOAuthHint.value = "No se pudo contactar al API. Comprueba VITE_API_URL y que el backend esté en marcha.";
     }
 }
 

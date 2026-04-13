@@ -4,13 +4,12 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../services/db";
 import { signToken, type AuthPayload } from "../middleware/auth";
+import { githubLoginRedirectUri, githubRepoLinkRedirectUri } from "../config/oauthEnv";
 import { registerSocialLoginRoutes } from "./authSocialLogin";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "buildersite_dev_secret";
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID ?? "";
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
-/** Must match the Authorization callback URL in the GitHub OAuth App (typically the frontend route). */
-const GITHUB_OAUTH_CALLBACK_URL = process.env.GITHUB_OAUTH_CALLBACK_URL ?? "http://localhost:5173/github/callback";
+const GITHUB_CLIENT_ID = (process.env.GITHUB_CLIENT_ID ?? "").trim();
+const GITHUB_CLIENT_SECRET = (process.env.GITHUB_CLIENT_SECRET ?? "").trim();
 
 export const authRouter = Router();
 
@@ -139,7 +138,22 @@ authRouter.get("/me", async (req: Request, res: Response) => {
 // ─── GET /api/auth/github/oauth-ready (público: solo indica si el servidor puede OAuth) ─
 authRouter.get("/github/oauth-ready", (_req: Request, res: Response) => {
     const ready = Boolean(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET);
-    res.json({ ok: true, data: { ready } });
+    const hint = ready
+        ? null
+        : !GITHUB_CLIENT_ID && !GITHUB_CLIENT_SECRET
+          ? "Faltan GITHUB_CLIENT_ID y GITHUB_CLIENT_SECRET en el backend (.env o variables del host, p. ej. Vercel)."
+          : !GITHUB_CLIENT_ID
+            ? "Falta GITHUB_CLIENT_ID."
+            : "Falta GITHUB_CLIENT_SECRET.";
+    res.json({
+        ok: true,
+        data: {
+            ready,
+            hint,
+            linkCallbackUrl: githubRepoLinkRedirectUri(),
+            loginCallbackUrl: githubLoginRedirectUri(),
+        },
+    });
 });
 
 // ─── GET /api/auth/github/authorize-url ───────────────────────────────────────
@@ -163,7 +177,7 @@ authRouter.get("/github/authorize-url", async (req: Request, res: Response) => {
         );
         const params = new URLSearchParams({
             client_id: GITHUB_CLIENT_ID,
-            redirect_uri: GITHUB_OAUTH_CALLBACK_URL,
+            redirect_uri: githubRepoLinkRedirectUri(),
             scope: "repo",
             state,
         });
@@ -224,7 +238,7 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
                 client_id: GITHUB_CLIENT_ID,
                 client_secret: GITHUB_CLIENT_SECRET,
                 code: parsed.data.code,
-                redirect_uri: GITHUB_OAUTH_CALLBACK_URL,
+                redirect_uri: githubRepoLinkRedirectUri(),
             }),
         });
         const tokenJson = (await tokenRes.json()) as {

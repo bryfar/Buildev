@@ -74,7 +74,7 @@ export const useAuthStore = defineStore("auth", () => {
             const detail =
                 typeof json.error === "string"
                     ? json.error
-                    : `HTTP ${res.status}. Revisa GITHUB_CLIENT_ID y GITHUB_OAUTH_CALLBACK_URL en el backend.`;
+                    : `HTTP ${res.status}. Revisa GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_OAUTH_CALLBACK_URL o PUBLIC_APP_URL en el backend.`;
             throw new Error(detail);
         }
         window.location.assign(json.data.url);
