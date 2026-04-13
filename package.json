@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "bootstrap": "yarn install",
+    "build": "yarn workspace @buildersite/frontend run build",
     "dev:editor": "yarn workspace @buildersite/frontend dev",
     "dev:backend": "yarn workspace @buildersite/backend dev"
   },
