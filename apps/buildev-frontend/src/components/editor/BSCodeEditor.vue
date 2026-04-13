@@ -11,9 +11,14 @@ const props = defineProps<{
   modelValue: string;
   language?: string;
   theme?: 'vs-dark' | 'light';
+  readOnly?: boolean;
+  minimap?: boolean;
 }>();
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits<{
+  'update:modelValue': [string];
+  cursorChange: [{ line: number; column: number }];
+}>();
 
 const editorContainer = ref<HTMLElement | null>(null);
 let editor: monaco.editor.IStandaloneCodeEditor | null = null;
@@ -27,16 +32,25 @@ onMounted(async () => {
       language: props.language || 'json',
       theme: props.theme === 'vs-dark' ? 'vs-dark' : 'vs',
       automaticLayout: true,
-      minimap: { enabled: false },
+      minimap: { enabled: props.minimap !== false },
       fontSize: 13,
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+      fontFamily: "'JetBrains Mono', 'Fira Code', 'IBM Plex Mono', Consolas, monospace",
       lineNumbers: 'on',
       roundedSelection: true,
       scrollBeyondLastLine: false,
-      readOnly: false,
+      readOnly: !!props.readOnly,
+      wordWrap: 'on',
       cursorBlinking: 'smooth',
       smoothScrolling: true,
-      padding: { top: 16 }
+      padding: { top: 12, bottom: 12 },
+      scrollbar: {
+        verticalScrollbarSize: 10,
+        horizontalScrollbarSize: 10
+      }
+    });
+
+    editor.onDidChangeCursorPosition((e) => {
+      emit('cursorChange', { line: e.position.lineNumber, column: e.position.column });
     });
 
     editor.onDidChangeModelContent(() => {
@@ -60,6 +74,20 @@ watch(() => props.theme, (newTheme) => {
   }
 });
 
+watch(() => props.readOnly, (ro) => {
+  editor?.updateOptions({ readOnly: !!ro });
+});
+
+watch(() => props.language, (lang) => {
+  if (!editor) return;
+  const model = editor.getModel();
+  if (model) monaco.editor.setModelLanguage(model, lang || 'json');
+});
+
+watch(() => props.minimap, (m) => {
+  editor?.updateOptions({ minimap: { enabled: m !== false } });
+});
+
 onUnmounted(() => {
   if (editor) {
     editor.dispose();
@@ -71,7 +99,7 @@ onUnmounted(() => {
 .monaco-container {
   width: 100%;
   height: 100%;
-  border-radius: 8px;
+  border-radius: 0;
   overflow: hidden;
 }
 </style>

@@ -1,9 +1,41 @@
 <template>
   <div class="editor-root" :class="[ui.theme === 'dark' ? 'theme-dark' : 'theme-light', { 'is-ide': isCodeMode }]">
-    <!-- REORGANIZED NAVBAR -->
-    <header class="top-bar shadow-sm">
+    <!-- ALTERNATIVE AI HEADER (AS PER REF IMAGE 2) -->
+    <header class="top-bar ai-header shadow-sm" v-if="isAIBuilding">
       <div class="navbar-left">
-        <button class="back-btn" @click="router.push('/dashboard')">
+        <button class="back-start-btn" type="button" @click="goToDashboard">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to start
+        </button>
+      </div>
+
+      <div class="navbar-center">
+        <span class="project-title-v2">{{ store.currentPage?.name || 'Untitled Project' }}</span>
+      </div>
+
+      <div class="navbar-right">
+        <button class="btn-ghost-v2" @click="remixProject">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Remix
+        </button>
+        <button class="btn-ghost-v2 white" @click="isShareModalOpen = true">Share</button>
+        <button class="btn-publish-v2" @click="isPublishOpen = true">Publish</button>
+
+        <div class="actions-sep"></div>
+        
+        <button class="icon-btn-v2" title="History">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </button>
+        <button class="icon-btn-v2" title="Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- STANDARD EDITOR NAVBAR -->
+    <header class="top-bar shadow-sm" v-else>
+      <div class="navbar-left">
+        <button class="back-btn" type="button" @click="goToDashboard" title="Back to dashboard">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
         </button>
         <div class="brand-area">
@@ -29,6 +61,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.2 7.6 2.4-7.6 2.4-2.4 7.2-2.4-7.2-7.6-2.4 7.6-2.4L12 2z" fill="var(--brand-primary)"/></svg>
           <span class="ai-label">AI Power</span>
         </button>
+        <button class="btn-ai-vision" @click="isVisionOpen = true" title="Open Code / Claude Vision">
+          <span class="sparkle">✨</span>
+          Vision Scan
+        </button>
       </div>
 
       <div class="navbar-right">
@@ -46,12 +82,15 @@
              +{{ multiplayer.userCount - Object.keys(multiplayer.remoteCursors).length - 1 }}
            </div>
         </div>
-        <button class="btn-share shadow-glow" @click="isShareModalOpen = true">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-          Share
-        </button>
-        <button class="btn-github shadow-glow" title="Commit to GitHub" @click="isGithubModalOpen = true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        <button
+          type="button"
+          class="theme-toggle-editor"
+          :title="ui.theme === 'light' ? 'Dark mode' : 'Light mode'"
+          @click="ui.toggleTheme()"
+        >
+          <span v-if="ui.theme === 'light'" class="theme-ico" aria-hidden="true">🌙</span>
+          <span v-else class="theme-ico" aria-hidden="true">☀️</span>
+          <span class="theme-label">{{ ui.theme === 'light' ? 'Dark' : 'Light' }}</span>
         </button>
         <div class="logo-sep"></div>
         <div class="mode-toggles">
@@ -65,7 +104,33 @@
             Code
           </button>
         </div>
-        <button class="btn-publish" @click="exportToHTML(store.currentPage!)">Publish</button>
+        
+        <button class="btn-secondary" @click="goToPreview" title="View live site">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          Preview
+        </button>
+        
+        <button class="btn-secondary" @click="isShareModalOpen = true" title="Share with team">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share
+        </button>
+
+        <div class="publish-dropdown-v12">
+           <button class="btn-publish main" title="Export or Sync">
+             Publish
+             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px; opacity: 0.7"><polyline points="6 9 12 15 18 9"/></svg>
+           </button>
+           <div class="dropdown-content shadow-lg">
+             <div class="dropdown-item-v12" @click="downloadHTML()">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+               <span>Download HTML</span>
+             </div>
+             <div class="dropdown-item-v12" @click="isGithubModalOpen = true">
+               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+               <span>Create GitHub Repo</span>
+             </div>
+           </div>
+        </div>
       </div>
     </header>
 
@@ -95,7 +160,10 @@
 
       <!-- SIDEBAR -->
       <aside v-if="isCodeMode" class="ide-sidebar">
-         <BSFileExplorer />
+        <BSFileExplorer
+          :selected-path="selectedExplorerPath"
+          @open-file="onExplorerOpenFile"
+        />
       </aside>
       <BSEditorSidebar v-else />
 
@@ -139,16 +207,45 @@
         </main>
 
         <div v-else class="ide-editor-container">
-           <div class="tabs-row">
-              <div class="tab active">
-                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                 blocks.pen
-              </div>
-              <div class="tab">theme.css</div>
-           </div>
-           <div class="monaco-wrapper">
-              <BSCodeEditor v-model="codeContent" :theme="ui.theme === 'dark' ? 'vs-dark' : 'light'" />
-           </div>
+          <div class="tabs-row" role="tablist">
+            <button
+              v-for="tab in ideTabs"
+              :key="tab.id"
+              type="button"
+              class="tab"
+              :class="{ active: tab.id === activeIdeTabId }"
+              role="tab"
+              :aria-selected="tab.id === activeIdeTabId"
+              @click="selectIdeTab(tab)"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                <polyline points="13 2 13 9 20 9" />
+              </svg>
+              <span class="tab-label">{{ tab.label }}</span>
+              <span
+                v-if="tab.kind !== 'blocks'"
+                class="tab-close"
+                title="Close"
+                @click.stop="closeIdeTab(tab, $event)"
+              >×</span>
+            </button>
+          </div>
+          <div class="vsc-breadcrumbs ide-breadcrumbs" aria-hidden="true">
+            <template v-for="(part, i) in breadcrumbParts" :key="i">
+              <span v-if="i > 0" class="crumb-sep">›</span>
+              <span :class="{ 'file-active': i === breadcrumbParts.length - 1 }">{{ part }}</span>
+            </template>
+          </div>
+          <div class="monaco-wrapper">
+            <BSCodeEditor
+              v-model="editorBuffer"
+              :language="activeIdeTab.language"
+              :read-only="activeIdeTab.kind === 'readonly'"
+              :theme="ui.theme === 'dark' ? 'vs-dark' : 'light'"
+              @cursor-change="onEditorCursor"
+            />
+          </div>
            <div class="terminal-container" :class="{ collapsed: isTerminalCollapsed }">
               <div class="terminal-header" @click="isTerminalCollapsed = !isTerminalCollapsed">
                  <span class="active">TERMINAL</span>
@@ -176,9 +273,10 @@
             </div>
           </div>
           <div class="status-right" v-if="isCodeMode">
+             <div class="status-item">Ln {{ ideCursor.line }}, Col {{ ideCursor.column }}</div>
              <div class="status-item">Spaces: 2</div>
              <div class="status-item">UTF-8</div>
-             <div class="status-item">TypeScript JSX</div>
+             <div class="status-item">{{ statusBarLanguage }}</div>
              <div class="status-item bell"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
           </div>
           <div class="status-right" v-else>
@@ -233,6 +331,15 @@ const route = useRoute();
 const router = useRouter();
 const store = usePagesStore();
 const ui = useUIStore();
+
+function goToDashboard() {
+  router.push('/');
+}
+function goToPreview() {
+  if (store.currentPage?.id) {
+    window.open(`/preview/${store.currentPage.id}`, '_blank');
+  }
+}
 const multiplayer = useMultiplayerStore();
 const activeTool = ref<'select' | 'text' | 'container' | 'image'>('select');
 const isShareModalOpen = ref(false);
@@ -255,9 +362,119 @@ const viewportLabel = computed(() => {
 });
 const zoomLabel = computed(() => zoom.value);
 
-// --- Code Mode Logic ---
+// --- Code Mode / IDE ---
+const BLOCKS_TAB_ID = 'file-blocks';
+const BLOCKS_FILE_PATH = 'src/blocks.json';
+
+interface IdeTab {
+  id: string;
+  label: string;
+  path: string;
+  language: string;
+  kind: 'blocks' | 'readonly';
+}
+
+const ideTabs = ref<IdeTab[]>([
+  { id: BLOCKS_TAB_ID, label: 'blocks.json', path: BLOCKS_FILE_PATH, language: 'json', kind: 'blocks' }
+]);
+const activeIdeTabId = ref(BLOCKS_TAB_ID);
+const readonlyBuffers = ref<Record<string, string>>({});
+const ideCursor = ref({ line: 1, column: 1 });
+
+const activeIdeTab = computed(
+  () => ideTabs.value.find(t => t.id === activeIdeTabId.value) ?? ideTabs.value[0]!
+);
+
+const selectedExplorerPath = computed(() => activeIdeTab.value?.path ?? null);
+
+const breadcrumbParts = computed(() => {
+  const p = activeIdeTab.value?.path ?? BLOCKS_FILE_PATH;
+  return p.split('/').filter(Boolean);
+});
+
+const statusBarLanguage = computed(() => {
+  const lang = activeIdeTab.value?.language ?? 'json';
+  const map: Record<string, string> = {
+    json: 'JSON',
+    css: 'CSS',
+    vue: 'Vue',
+    typescript: 'TypeScript',
+    markdown: 'Markdown',
+    html: 'HTML',
+    plaintext: 'Plain Text'
+  };
+  return map[lang] ?? (lang.slice(0, 1).toUpperCase() + lang.slice(1));
+});
+
+function placeholderForFile(path: string, name: string) {
+  return `/* ${path} */\n// Read-only preview. Page structure is edited in blocks.json or on the canvas.\n`;
+}
+
+function onExplorerOpenFile(payload: { path: string; name: string; language: string }) {
+  const isBlocks =
+    payload.name === 'blocks.json' ||
+    payload.path === BLOCKS_FILE_PATH ||
+    payload.path.endsWith('/blocks.json');
+
+  if (isBlocks) {
+    activeIdeTabId.value = BLOCKS_TAB_ID;
+    return;
+  }
+
+  const existing = ideTabs.value.find(t => t.path === payload.path);
+  if (existing) {
+    activeIdeTabId.value = existing.id;
+    return;
+  }
+
+  const id = 'file-' + payload.path.replace(/[^a-zA-Z0-9]+/g, '-');
+  ideTabs.value.push({
+    id,
+    label: payload.name,
+    path: payload.path,
+    language: payload.language,
+    kind: 'readonly'
+  });
+  if (!readonlyBuffers.value[payload.path]) {
+    readonlyBuffers.value[payload.path] = placeholderForFile(payload.path, payload.name);
+  }
+  activeIdeTabId.value = id;
+}
+
+function selectIdeTab(tab: IdeTab) {
+  activeIdeTabId.value = tab.id;
+}
+
+function closeIdeTab(tab: IdeTab, e: MouseEvent) {
+  e.stopPropagation();
+  if (tab.kind === 'blocks') return;
+  const idx = ideTabs.value.findIndex(t => t.id === tab.id);
+  if (idx <= 0) return;
+  ideTabs.value.splice(idx, 1);
+  if (activeIdeTabId.value === tab.id) {
+    activeIdeTabId.value = ideTabs.value[Math.max(0, idx - 1)]!.id;
+  }
+}
+
+function onEditorCursor(pos: { line: number; column: number }) {
+  ideCursor.value = pos;
+}
+
 const codeContent = ref("");
 let isUpdatingFromCode = false;
+
+const editorBuffer = computed({
+  get() {
+    const tab = activeIdeTab.value;
+    if (tab.kind === 'blocks') return codeContent.value;
+    return readonlyBuffers.value[tab.path] ?? placeholderForFile(tab.path, tab.label);
+  },
+  set(v: string) {
+    const tab = activeIdeTab.value;
+    if (tab.kind === 'blocks') codeContent.value = v;
+    else readonlyBuffers.value[tab.path] = v;
+  }
+});
 
 function setManualMode() {
   isCodeMode.value = false;
@@ -288,6 +505,7 @@ watch(() => store.currentPage?.blocks, (newBlocks) => {
 
 watch(codeContent, (newVal) => {
   if (!isCodeMode.value || !store.currentPage) return;
+  if (activeIdeTabId.value !== BLOCKS_TAB_ID) return;
   try {
     const parsed = JSON.parse(newVal);
     isUpdatingFromCode = true;
@@ -298,13 +516,18 @@ watch(codeContent, (newVal) => {
   }
 });
 
-onMounted(() => {
-  window.addEventListener('keydown', handleGlobalKeydown);
-});
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleGlobalKeydown);
-});
+watch(
+  () => store.currentPage?.id,
+  (id) => {
+    if (!id) return;
+    ideTabs.value = [
+      { id: BLOCKS_TAB_ID, label: 'blocks.json', path: BLOCKS_FILE_PATH, language: 'json', kind: 'blocks' }
+    ];
+    activeIdeTabId.value = BLOCKS_TAB_ID;
+    readonlyBuffers.value = {};
+    ideCursor.value = { line: 1, column: 1 };
+  }
+);
 
 function handleGlobalKeydown(e: KeyboardEvent) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
@@ -313,13 +536,11 @@ function handleGlobalKeydown(e: KeyboardEvent) {
   }
 }
 
-async function handleAISubmit(query: string) {
+async function handleAISubmit(_query: string) {
   isAIBuilding.value = true;
-  isAIComposeOpen.value = false;
-  // Mock generation delay
-  setTimeout(() => {
+  window.setTimeout(() => {
     isAIBuilding.value = false;
-  }, 3000);
+  }, 1200);
 }
 
 // --- Panning State ---
@@ -455,11 +676,13 @@ function handleKeyUp(e: KeyboardEvent) {
 
 onMounted(() => {
   store.loadPage(route.params.id as string);
+  window.addEventListener('keydown', handleGlobalKeydown);
   window.addEventListener('keydown', handleKeyDown, true);
   window.addEventListener('keyup', handleKeyUp, true);
 });
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
   window.removeEventListener('keydown', handleKeyDown, true);
   window.removeEventListener('keyup', handleKeyUp, true);
 });
@@ -765,6 +988,28 @@ watch(() => store.currentPage?.blocks, () => {
 }
 .btn-github:hover { background: var(--bg-surface); transform: scale(1.05); }
 
+.theme-toggle-editor {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: var(--bg-surface-alt);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.theme-toggle-editor:hover {
+  background: var(--bg-surface);
+  transform: scale(1.02);
+}
+.theme-toggle-editor .theme-ico { font-size: 14px; line-height: 1; }
+.theme-toggle-editor .theme-label { min-width: 36px; text-align: left; }
+
 /* ZOOM MINI */
 .zoom-controls-v12 { display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.1); border-radius: 4px; padding: 0 4px; }
 .zoom-btn-mini { background: transparent; border: none; color: #fff; width: 18px; height: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; opacity: 0.7; }
@@ -890,12 +1135,108 @@ watch(() => store.currentPage?.blocks, () => {
 .term-tab { height: 100%; display: flex; align-items: center; border-bottom: 1px solid transparent; }
 .term-tab.active { color: var(--text-main); border-bottom: 1px solid var(--text-main); }
 
-.tabs-row { height: 35px; background: var(--bg-surface-alt); border-bottom: 1px solid var(--border-main); display: flex; }
-.tab { padding: 0 16px; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); border-right: 1px solid var(--border-main); background: rgba(0,0,0,0.05); cursor: pointer; }
-.tab.active { background: var(--bg-main); color: var(--text-main); border-top: 1px solid var(--brand-primary); }
+.tabs-row { height: 35px; background: var(--bg-surface-alt); border-bottom: 1px solid var(--border-main); display: flex; flex-shrink: 0; overflow-x: auto; }
+.tabs-row .tab {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 12px 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border: none;
+  border-right: 1px solid var(--border-main);
+  background: rgba(0,0,0,0.06);
+  cursor: pointer;
+  font-family: inherit;
+}
+.tabs-row .tab.active { background: var(--bg-main); color: var(--text-main); box-shadow: inset 0 2px 0 0 var(--brand-primary); }
+.tab-label { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tab-close {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  opacity: 0.55;
+  color: inherit;
+}
+.tab-close:hover { opacity: 1; background: rgba(255,255,255,0.08); }
+.ide-breadcrumbs { flex-shrink: 0; border-bottom: 1px solid var(--border-main); }
+.crumb-sep { margin: 0 6px; opacity: 0.45; user-select: none; }
 
 .ide-sidebar { width: 260px; background: var(--bg-surface); border-right: 1px solid var(--border-main); flex-shrink: 0; }
 .ide-editor-container { flex: 1; display: flex; flex-direction: column; background: var(--bg-main); overflow: hidden; }
 .monaco-wrapper { flex: 1; position: relative; }
+
+/* SHARED SECONDARY BUTTON STYLE (PREVIEW & SHARE) */
+.btn-secondary {
+  height: 32px; padding: 0 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px; color: rgba(255, 255, 255, 0.8); font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.22); color: #fff; }
+.theme-light .btn-secondary { background: #fff; border: 1px solid #ddd; color: #333; }
+.theme-light .btn-secondary:hover { background: #f9f9f9; border-color: #ccc; }
+
+/* PUBLISH DROPDOWN */
+.publish-dropdown-v12 { position: relative; display: inline-block; }
+.dropdown-content {
+  position: absolute; right: 0; top: calc(100% + 8px); width: 220px;
+  background: var(--bg-surface, #1e1e1e); border: 1px solid var(--border-main, rgba(255,255,255,0.1));
+  border-radius: 12px; padding: 6px; opacity: 0; visibility: hidden;
+  transform: translateY(10px); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.publish-dropdown-v12:hover .dropdown-content { opacity: 1; visibility: visible; transform: translateY(0); }
+
+.dropdown-item-v12 {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-radius: 8px; cursor: pointer; color: var(--text-muted, rgba(255,255,255,0.6)); transition: all 0.15s;
+  font-size: 13px; font-weight: 600;
+}
+.dropdown-item-v12:hover { background: var(--bg-surface-alt, rgba(255,255,255,0.05)); color: var(--text-main, #fff); }
+.dropdown-item-v12 svg { color: var(--brand-primary, #8b5cf6); }
+
+/* AI HEADER (REF IMAGE 2) */
+.ai-header {
+  height: 64px; background: #fff; border-bottom: 1px solid #eee; display: flex; align-items: center; padding: 0 24px;
+}
+.theme-dark .ai-header { background: #111; border-color: #222; }
+
+.back-start-btn {
+  display: flex; align-items: center; gap: 10px; background: #f5f5f7; border: 1px solid rgba(0,0,0,0.05);
+  padding: 8px 16px; border-radius: 12px; color: #1d1d1f; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.theme-dark .back-start-btn { background: #222; color: #fff; border-color: rgba(255,255,255,0.05); }
+.back-start-btn:hover { background: #eaeaef; transform: translateX(-2px); }
+.theme-dark .back-start-btn:hover { background: #333; }
+
+.project-title-v2 { font-size: 15px; font-weight: 700; color: #1d1d1f; opacity: 0.8; }
+.theme-dark .project-title-v2 { color: #fff; }
+
+.btn-ghost-v2 {
+  background: transparent; border: none; padding: 8px 14px; border-radius: 8px;
+  color: #1d1d1f; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px;
+}
+.theme-dark .btn-ghost-v2 { color: #fff; }
+.btn-ghost-v2.white { background: #fff; border: 1px solid #ddd; }
+.theme-dark .btn-ghost-v2.white { background: #222; border-color: #333; }
+
+.btn-publish-v2 {
+  background: #1d1d1f; color: #fff; border: none; padding: 8px 20px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; cursor: pointer; margin-left: 8px; transition: all 0.2s;
+}
+.theme-dark .btn-publish-v2 { background: #fff; color: #000; }
+.btn-publish-v2:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.actions-sep { width: 1px; height: 20px; background: #eee; margin: 0 16px; }
+.theme-dark .actions-sep { background: #222; }
+
+.icon-btn-v2 { background: transparent; border: none; padding: 8px; color: #555; cursor: pointer; border-radius: 8px; transition: all 0.2s; }
+.theme-dark .icon-btn-v2 { color: rgba(255,255,255,0.6); }
+.icon-btn-v2:hover { background: rgba(0,0,0,0.05); color: #000; }
+.theme-dark .icon-btn-v2:hover { background: rgba(255,255,255,0.05); color: #fff; }
 </style>
 

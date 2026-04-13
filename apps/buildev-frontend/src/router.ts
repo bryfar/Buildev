@@ -8,6 +8,10 @@ const routes = [
     meta: { public: true },
   },
   {
+    path: "/dashboard",
+    redirect: "/",
+  },
+  {
     path: "/",
     component: () => import("./views/DashboardView.vue"),
     meta: { requiresAuth: true },
@@ -21,6 +25,11 @@ const routes = [
     path: "/preview/:id",
     component: () => import("./views/PreviewView.vue"),
     meta: { public: true },
+  },
+  {
+    path: "/ai-studio",
+    component: () => import("./views/AIStudioView.vue"),
+    meta: { requiresAuth: true },
   },
 ];
 

@@ -148,10 +148,10 @@ export const usePagesStore = defineStore("pages", () => {
     }
   }
 
-  function selectSite(id: string) {
+  async function selectSite(id: string) {
     currentSiteId.value = id;
     localStorage.setItem("buildersite_site_id", id);
-    loadPages();
+    await loadPages();
   }
 
   async function loadPage(id: string) {

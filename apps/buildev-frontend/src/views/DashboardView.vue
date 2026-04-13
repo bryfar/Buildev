@@ -171,7 +171,7 @@
     <!-- MODALS -->
     <Transition name="fade">
       <div v-if="showCreateProject || showCreatePage" class="modal-backdrop" @click.self="closeModals">
-        <div class="modal-box premium-card bounce-in" :class="{ 'modal-wide': showCreateProject }">
+        <div class="modal-box premium-card bounce-in" :class="{ 'modal-wide': showCreateProject, 'modal-ai-architect': showCreateProject && selectedMode === 'ai' && creationStep === 2 }">
           <div class="modal-header">
             <div class="header-with-steps" v-if="showCreateProject">
               <h2>{{ selectedMode === 'ai' ? 'AI Project Architect' : 'Create Project' }}</h2>
@@ -188,7 +188,7 @@
               <div v-if="creationStep === 1" class="mode-selection">
                 <p class="step-desc">Choose your starting point</p>
                 <div class="mode-grid-horizontal">
-                  <div class="mode-card-v2 ai" :class="{ active: selectedMode === 'ai' }" @click="selectedMode = 'ai'">
+                  <div class="mode-card-v2 ai" :class="{ active: selectedMode === 'ai' }" @click="navToAIStudio">
                     <div class="mode-badge">✨ Recommended</div>
                     <div class="mode-viz">
                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
@@ -221,10 +221,11 @@
               </div>
 
               <!-- AI Flow -->
-              <BSAIChatWizard 
-                v-else-if="selectedMode === 'ai' && creationStep === 2" 
-                @complete="handleAIComplete" 
-                @cancel="creationStep = 1" 
+              <BSAIChatWizard
+                v-else-if="selectedMode === 'ai' && creationStep === 2"
+                :key="aiWizardKey"
+                @complete="handleAIComplete"
+                @cancel="creationStep = 1"
               />
 
               <!-- Figma/Normal/Reverse Details -->
@@ -281,28 +282,39 @@
             </template>
           </div>
 
-          <div class="modal-footer" v-if="selectedMode !== 'ai' || creationStep === 1">
+          <div class="modal-footer" v-if="showCreateProject || showCreatePage">
             <template v-if="showCreateProject">
-              <button class="btn-cancel" @click="creationStep > 1 ? creationStep-- : closeModals()">
-                {{ creationStep === 1 ? 'Cancel' : 'Back' }}
-              </button>
-              <button class="btn-submit" 
-                v-if="creationStep < 2" 
-                @click="creationStep++"
-              >
-                Continue
-              </button>
-              <button class="btn-submit" 
-                v-else-if="selectedMode !== 'ai'"
-                :disabled="!newProject.name || (selectedMode === 'figma' && !newProject.figmaUrl)" 
-                @click="handleCreateProject"
-              >
-                {{ isSaving ? 'Launching...' : 'Create Project' }}
-              </button>
+              <template v-if="selectedMode === 'ai' && creationStep === 2">
+                <button type="button" class="btn-cancel" @click="creationStep = 1">
+                  Back to modes
+                </button>
+              </template>
+              <template v-else>
+                <button type="button" class="btn-cancel" @click="creationStep > 1 ? creationStep-- : closeModals()">
+                  {{ creationStep === 1 ? 'Cancel' : 'Back' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-submit"
+                  v-if="creationStep < 2"
+                  @click="selectedMode === 'ai' ? navToAIStudio() : creationStep++"
+                >
+                  Continue
+                </button>
+                <button
+                  type="button"
+                  class="btn-submit"
+                  v-else-if="selectedMode !== 'ai'"
+                  :disabled="!newProject.name || (selectedMode === 'figma' && !newProject.figmaUrl)"
+                  @click="handleCreateProject"
+                >
+                  {{ isSaving ? 'Launching...' : 'Create Project' }}
+                </button>
+              </template>
             </template>
             <template v-else>
-              <button class="btn-cancel" @click="closeModals">Cancel</button>
-              <button class="btn-submit" :disabled="isSaving" @click="handleCreatePage()">
+              <button type="button" class="btn-cancel" @click="closeModals">Cancel</button>
+              <button type="button" class="btn-submit" :disabled="isSaving" @click="handleCreatePage()">
                 <span v-if="isSaving" class="spinner-sm"></span>
                 {{ isSaving ? 'Processing...' : 'Create Page' }}
               </button>
@@ -315,8 +327,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from "vue";
-import { useRouter } from "vue-router";
+import { ref, watch, computed, reactive } from "vue";
+import { useRouter, useRoute } from "vue-router";
 import { useAuthStore } from "../store/auth";
 import { usePagesStore } from "../store/pages";
 import { useUIStore } from "../store/ui";
@@ -324,6 +336,7 @@ import BSAIChatWizard from "../components/modals/BSAIChatWizard.vue";
 import { aiService } from "../services/aiService";
 
 const router = useRouter();
+const route = useRoute();
 const auth = useAuthStore();
 const store = usePagesStore();
 const ui = useUIStore();
@@ -347,23 +360,35 @@ const newProject = reactive({
 });
 
 const newPage = ref({ name: "", urlPath: "" });
+const aiWizardKey = ref(0);
+
+function navToAIStudio() {
+  closeModals();
+  router.push('/ai-studio');
+}
 
 const currentSite = computed(() => store.sites.find((s: any) => s.id === store.currentSiteId));
 
-onMounted(async () => {
+async function refreshDashboard() {
   try {
     await store.loadSites();
     if (store.currentSiteId && store.sites.length > 0) {
       view.value = 'pages';
-      await Promise.all([
-        store.loadPages(),
-        store.loadComponents()
-      ]);
+      await Promise.all([store.loadPages(), store.loadComponents()]);
     }
   } catch (err) {
     console.error("Dashboard Load Error:", err);
   }
-});
+}
+
+watch(
+  () => route.path,
+  (path) => {
+    if (path !== "/" && path !== "/dashboard") return;
+    refreshDashboard();
+  },
+  { immediate: true }
+);
 
 function openProjectModal() {
   creationStep.value = 1;
@@ -373,6 +398,7 @@ function openProjectModal() {
   newProject.figmaUrl = "";
   newProject.stack = "vite-vue";
   newProject.backend = "none";
+  aiWizardKey.value += 1;
   showCreateProject.value = true;
 }
 
@@ -388,12 +414,12 @@ function closeModals() {
 }
 
 async function handleSelectSite(id: string) {
-  store.selectSite(id);
+  await store.selectSite(id);
   view.value = 'pages';
   store.loadComponents();
 }
 
-async function handleAIComplete(data: { name: string, prompt: string }) {
+async function handleAIComplete(data: { name: string; prompt: string; architecture?: unknown }) {
   newProject.name = data.name;
   newProject.prompt = data.prompt;
   await handleCreateProject();
@@ -413,7 +439,7 @@ async function handleCreateProject() {
     
     if (site) {
       showCreateProject.value = false;
-      store.selectSite(site.id);
+      await store.selectSite(site.id);
       view.value = 'pages';
     }
   } catch (err) {
@@ -455,7 +481,7 @@ async function handleReverseUpload(e: Event) {
     });
     if (site) {
       showCreateProject.value = false;
-      store.selectSite(site.id);
+      await store.selectSite(site.id);
       view.value = 'pages';
     }
   } catch (err) {
@@ -617,4 +643,8 @@ function handleLogout() {
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
 @keyframes bounceIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+/* AI ARCHITECT MODAL ADJUSTMENT */
+.modal-ai-architect { background: transparent !important; border: none !important; box-shadow: none !important; max-width: 640px !important; }
+.modal-ai-architect .modal-header, .modal-ai-architect .modal-footer { display: none; }
+.modal-ai-architect .modal-body { padding: 0; }
 </style>

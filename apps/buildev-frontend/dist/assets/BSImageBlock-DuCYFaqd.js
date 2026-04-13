@@ -1,1 +1,0 @@
-import{d as t,o as e,c,A as a}from"./index-FKeRXGwE.js";import{_ as s}from"./_plugin-vue_export-helper-D9b95_W7.js";const l=["src","alt"],r=t({__name:"BSImageBlock",props:{block:{}},setup(o){return(n,m)=>(e(),c("img",{src:o.block.props.src,alt:o.block.props.alt,style:a({width:o.block.props.width})},null,12,l))}}),_=s(r,[["__scopeId","data-v-af8f1224"]]);export{_ as default};
