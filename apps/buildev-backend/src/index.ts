@@ -1,5 +1,5 @@
 import "./loadEnv";
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 
 import { authRouter } from "./routes/auth";
@@ -34,6 +34,20 @@ app.use("/api/public", publicRouter);
 // ─── Healthcheck ──────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, service: "buildersite-backend", version: "0.2.0" });
+});
+
+// ─── Errores API siempre en JSON (evita HTML 500 que rompe el front en dev/proxy) ─
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+  const message = err instanceof Error ? err.message : "Error interno del servidor";
+  const status =
+    typeof err === "object" && err !== null && "status" in err && typeof (err as { status: unknown }).status === "number"
+      ? (err as { status: number }).status
+      : 500;
+  res.status(status >= 400 && status < 600 ? status : 500).json({ ok: false, error: message });
 });
 
 // ─── Arranque ─────────────────────────────────────────────────────────────────

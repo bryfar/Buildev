@@ -114,7 +114,7 @@ function handleAssetSelect(asset: { url: string }) {
 
 <style scoped>
 .props-panel {
-  width: 320px;
+  width: 360px;
   background: var(--bg-sidebar);
   border-left: 1px solid var(--border-main);
   display: flex;
@@ -129,7 +129,7 @@ function handleAssetSelect(asset: { url: string }) {
   border-bottom: 1px solid var(--border-main);
 }
 .panel-tabs button {
-  flex: 1 1 33%;
+  flex: 1 1 50%;
   padding: 10px 4px;
   background: none;
   border: none;

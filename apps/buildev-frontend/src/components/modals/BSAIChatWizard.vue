@@ -2,10 +2,13 @@
   <div class="ai-architect-bar" :class="{ 'gen-mode': isGenerating }">
     <!-- COMMAND HEADER (CURSOR STYLE) -->
     <div class="bar-header">
-      <div class="model-selector">
-        <span class="sparkle">✨</span>
-        <span class="model-name">Buildev Architect-1</span>
-        <span class="chevron">▾</span>
+      <div class="header-left">
+        <button type="button" class="btn-back-modes" @click="emit('cancel')">← Modes</button>
+        <div class="model-selector">
+          <span class="sparkle">✨</span>
+          <span class="model-name">Buildev Architect-1</span>
+          <span class="chevron">▾</span>
+        </div>
       </div>
       <div class="step-indicator-dot" :title="'Step ' + (currentStep + 1) + ' of ' + steps.length">
         <div class="dot-inner" :style="{ width: ((currentStep + 1) / steps.length) * 100 + '%' }"></div>
@@ -331,6 +334,29 @@ function scrollToBottom() {
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-back-modes {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-back-modes:hover {
+  background: rgba(139, 92, 246, 0.14);
+  border-color: rgba(139, 92, 246, 0.4);
+  color: #fff;
 }
 
 .model-selector {
