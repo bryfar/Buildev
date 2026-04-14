@@ -53,7 +53,7 @@ The repo includes a root [`vercel.json`](./vercel.json) so Vercel can build from
 
 1. Import the repository in Vercel and leave **Root Directory** empty (or `.`).
 2. Do not override Install / Build / Output in the dashboard (the root `vercel.json` sets them).
-3. Add `VITE_API_URL` = your deployed backend URL, then redeploy.
+3. Add **`VITE_API_URL`** = your deployed backend URL (no trailing slash), then redeploy. The frontend build **fails on Vercel** if this is missing (see `assertVercelProductionApiUrl` in [`apps/buildev-frontend/vite.config.ts`](./apps/buildev-frontend/vite.config.ts)); use **`VITE_ALLOW_EMPTY_API_URL=1`** only for exceptional preview builds without an API.
 
 **Option B — Root directory = `apps/buildev-frontend`**
 
@@ -67,12 +67,24 @@ You can copy `apps/buildev-frontend/.env.example` for local development.
 
 ## ▲ Deploy API (Express + Prisma) — Vercel u otro host
 
-El **frontend** en Vercel solo sirve estáticos; el **API** debe desplegarse aparte (otro proyecto Vercel, Railway, Fly, etc.) con `DATABASE_URL` y el resto de variables del backend.
+El **frontend** en Vercel solo sirve estáticos; el **API** vive en **otra URL** (otro proyecto Vercel, Railway, Fly, etc.). En el proyecto del **front** debes definir **`VITE_API_URL`** = URL pública del API (sin `/` final) y **volver a desplegar** el front.
 
-1. **Variables de entorno** del API: `DATABASE_URL`, `JWT_SECRET`, OAuth (`GITHUB_*`, `GOOGLE_*`), etc. Copia [`apps/buildev-backend/.env.example`](./apps/buildev-backend/.env.example). Para login GitHub/Google en producción, define **`PUBLIC_APP_URL`** (URL del front, sin `/` final) o las variables `GITHUB_LOGIN_REDIRECT_URI` / `GOOGLE_LOGIN_REDIRECT_URI` para que coincidan con las URIs registradas en GitHub y Google.
-2. **Migraciones en cada deploy**: el script `vercel-build` del backend ejecuta `prisma migrate deploy` (requiere `DATABASE_URL` disponible **durante el build** en Vercel: Production y Preview).
-3. **Monorepo (recomendado)**: en Vercel, **Root Directory** = raíz del repo y **Build Command** = `corepack yarn vercel-build:backend` · **Install Command** = la del root (p. ej. la de [`vercel.json`](./vercel.json) con Yarn 4).
-4. Si no puedes migrar en el build, ejecuta **una vez** en tu Postgres (Neon, Supabase, etc.):
+### Solución definitiva en Vercel (dos proyectos)
+
+| Proyecto | Root Directory | Qué hace |
+| :--- | :--- | :--- |
+| **Frontend** | Raíz del repo (vacío) | Usa el [`vercel.json`](./vercel.json) del repo: build del editor. **Variable obligatoria:** `VITE_API_URL=https://tu-api.vercel.app` |
+| **Backend (API)** | `apps/buildev-backend` | Usa [`apps/buildev-backend/vercel.json`](./apps/buildev-backend/vercel.json): instala el monorepo y ejecuta `vercel-build`. Express queda en la URL que asigne Vercel. |
+
+1. Crea el **proyecto del API** con Root = `apps/buildev-backend` y conecta el mismo repositorio.
+2. En ese proyecto, añade las **variables de entorno** del API: `DATABASE_URL`, `JWT_SECRET`, OAuth (`GITHUB_*`, `GOOGLE_*`), etc. Copia [`apps/buildev-backend/.env.example`](./apps/buildev-backend/.env.example). Para OAuth en producción, define **`PUBLIC_APP_URL`** = URL del front (sin `/` final) o las URIs explícitas `GITHUB_LOGIN_REDIRECT_URI` / `GOOGLE_LOGIN_REDIRECT_URI` según GitHub/Google Console.
+3. Despliega el API y copia su URL (p. ej. `https://buildev-api.vercel.app`).
+4. En el **proyecto del front**, Settings → Environment Variables → **`VITE_API_URL`** = esa URL (Production y Preview si aplica). **Redeploy** del front.
+5. Comprueba: `GET https://tu-api…/api/health` debe devolver JSON; el login del front debe llamar al mismo host vía `VITE_API_URL`.
+
+**Migraciones en cada deploy:** el script `vercel-build` del backend ejecuta `prisma migrate deploy` (necesitas `DATABASE_URL` en el **build** del proyecto del API).
+
+Si no puedes migrar en el build, ejecuta **una vez** en tu Postgres (Neon, Supabase, etc.):
 
    `ALTER TABLE "User" ALTER COLUMN "passwordHash" DROP NOT NULL;`
 
