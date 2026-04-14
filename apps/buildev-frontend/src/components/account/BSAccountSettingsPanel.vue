@@ -77,8 +77,8 @@
             <div class="acc-scroll">
               <BSAccountSettingsMain
                 :section="section"
-                :github-oauth-ready="githubOAuthReady"
-                :github-oauth-hint="githubOAuthHint"
+                :githubOAuthReady="githubOAuthReady"
+                :githubOAuthHint="githubOAuthHint"
                 :dark="ui.theme === 'dark'"
                 @go="onGo"
               />
@@ -94,7 +94,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useAuthStore } from "../../store/auth";
 import { useUIStore } from "../../store/ui";
-import { resolveApiBase } from "../../utils/apiBase";
+import { apiBase } from "../../utils/apiBase";
 import BSAccountSettingsMain from "./BSAccountSettingsMain.vue";
 import type { AccountSettingsSection } from "./accountSettingsTypes";
 
@@ -102,7 +102,6 @@ const emit = defineEmits<{ close: [] }>();
 
 const auth = useAuthStore();
 const ui = useUIStore();
-const API = resolveApiBase(import.meta.env.VITE_API_URL);
 const section = ref<AccountSettingsSection>("overview");
 const githubOAuthReady = ref(true);
 const githubOAuthHint = ref<string | null>(null);
@@ -131,7 +130,7 @@ function onGo(s: AccountSettingsSection) {
 
 async function loadOauthReady() {
     try {
-        const res = await fetch(`${API}/api/auth/github/oauth-ready`);
+        const res = await fetch(`${apiBase}/api/auth/github/oauth-ready`);
         const json = (await res.json()) as {
             ok?: boolean;
             data?: {

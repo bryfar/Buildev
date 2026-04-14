@@ -2,6 +2,7 @@ import "./loadEnv";
 import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
 
+import { assertProductionSafeOrThrow } from "./config/productionGuard";
 import { authRouter } from "./routes/auth";
 import { pagesRouter } from "./routes/pages";
 import { componentsRouter } from "./routes/components";
@@ -11,8 +12,16 @@ import { contentModelRouter } from "./routes/content-model";
 import { publicRouter } from "./routes/public";
 import { gitRouter } from "./routes/git";
 import { deployRouter } from "./routes/deploy";
+import { aiRouter } from "./routes/ai";
+import { githubRouter } from "./routes/github";
+
+assertProductionSafeOrThrow();
 
 const app = express();
+
+if (process.env.VERCEL) {
+    app.set("trust proxy", 1);
+}
 
 // ─── Middlewares globales ──────────────────────────────────────────────────────
 app.use(cors({ origin: "*" }));
@@ -27,13 +36,20 @@ app.use("/api/assets", assetsRouter);
 app.use("/api/content-models", contentModelRouter);
 app.use("/api/git", gitRouter);
 app.use("/api/deploy", deployRouter);
+app.use("/api/ai", aiRouter);
+app.use("/api/github", githubRouter);
 
 // ─── Rutas públicas del SDK (requieren API Key) ───────────────────────────────
 app.use("/api/public", publicRouter);
 
 // ─── Healthcheck ──────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, service: "buildersite-backend", version: "0.2.0" });
+  res.json({
+    ok: true,
+    service: "buildersite-backend",
+    version: "0.2.0",
+    runtime: process.env.VERCEL ? "vercel" : "node",
+  });
 });
 
 // ─── Errores API siempre en JSON (evita HTML 500 que rompe el front en dev/proxy) ─
@@ -55,7 +71,9 @@ const PORT = Number(process.env.PORT) || 4000;
 if (!process.env.VERCEL) {
   const server = app.listen(PORT, () => {
     console.log(`[Buildersite Backend] ▶  http://localhost:${PORT}`);
-    console.log("  Rutas privadas: /api/auth | /api/pages | /api/sites | /api/components | /api/content-models | /api/git");
+    console.log(
+      "  Rutas privadas: /api/auth | /api/pages | /api/sites | /api/components | /api/content-models | /api/git | /api/ai | /api/github",
+    );
     console.log("  Rutas SDK:      /api/public/page | /api/public/events | /api/public/page/:id/publications");
   });
   server.on("error", (err: NodeJS.ErrnoException) => {

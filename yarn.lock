@@ -68,6 +68,8 @@ __metadata:
 "@buildersite/domain@workspace:*, @buildersite/domain@workspace:packages/buildersite-domain":
   version: 0.0.0-use.local
   resolution: "@buildersite/domain@workspace:packages/buildersite-domain"
+  dependencies:
+    typescript: "npm:^5.6.3"
   languageName: unknown
   linkType: soft
 
@@ -97,6 +99,8 @@ __metadata:
   resolution: "@buildersite/sdk@workspace:packages/buildersite-sdk"
   dependencies:
     "@buildersite/domain": "workspace:*"
+    typescript: "npm:^5.6.3"
+    vue: "npm:^3.5.15"
   peerDependencies:
     vue: ">=3.0.0"
   peerDependenciesMeta:

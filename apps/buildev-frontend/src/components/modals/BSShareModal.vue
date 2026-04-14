@@ -21,6 +21,7 @@
         <div class="divider"></div>
 
         <div class="share-section">
+          <p v-if="inviteHint" class="invite-hint">{{ inviteHint }}</p>
           <label class="section-label">Invite by email</label>
           <div class="invite-form">
             <input 
@@ -33,6 +34,20 @@
             <button class="btn-invite" :disabled="!isValidEmail" @click="sendInvite">
               Invite
             </button>
+          </div>
+          <div v-if="invites.length" class="invites-list">
+            <div v-for="inv in invites" :key="inv.id" class="invite-item">
+              <div class="invite-main">
+                <span>{{ inv.email }}</span>
+                <span class="invite-status">{{ inv.status }}</span>
+              </div>
+              <div v-if="inv.acceptPath" class="invite-link-row">
+                <input type="text" readonly class="invite-link-input" :value="fullInviteUrl(inv.acceptPath)" />
+                <button type="button" class="btn-copy-mini" @click="copyInviteLink(inv.acceptPath)">
+                  {{ copiedToken === inv.id ? 'Copiado' : 'Copiar enlace' }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -57,14 +72,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useMultiplayerStore } from '../../store/multiplayer';
+import { useAuthStore } from '../../store/auth';
+import { usePagesStore } from '../../store/pages';
+import { apiBase } from '../../utils/apiBase';
+import { readBuildevApiJson } from '../../utils/apiResponse';
 
 const emit = defineEmits(['close']);
 const multiplayer = useMultiplayerStore();
+const auth = useAuthStore();
+const pages = usePagesStore();
 const shareUrl = ref(window.location.href);
 const email = ref("");
 const copied = ref(false);
+const inviteHint = ref("");
+const invites = ref<
+  Array<{ id: string; email: string; invitedAt: string; status: string; acceptPath?: string }>
+>([]);
+const copiedToken = ref<string | null>(null);
 
 const isValidEmail = computed(() => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value);
@@ -76,11 +102,102 @@ async function copyLink() {
   setTimeout(() => (copied.value = false), 2000);
 }
 
+/**
+ * URL absoluta del flujo de aceptación de invitación.
+ *
+ * @param acceptPath Ruta relativa (`/invite?token=…`) devuelta por el API.
+ * @returns Origen actual + ruta.
+ */
+function fullInviteUrl(acceptPath: string): string {
+  if (acceptPath.startsWith("http://") || acceptPath.startsWith("https://")) {
+    return acceptPath;
+  }
+  return `${window.location.origin}${acceptPath.startsWith("/") ? "" : "/"}${acceptPath}`;
+}
+
+/**
+ * Copia al portapapeles el enlace de invitación con token.
+ *
+ * @param acceptPath Ruta devuelta por el API.
+ */
+async function copyInviteLink(acceptPath: string): Promise<void> {
+  await navigator.clipboard.writeText(fullInviteUrl(acceptPath));
+  const inv = invites.value.find((i) => i.acceptPath === acceptPath);
+  copiedToken.value = inv?.id ?? "x";
+  setTimeout(() => {
+    copiedToken.value = null;
+  }, 2000);
+}
+
 function sendInvite() {
   if (!isValidEmail.value) return;
-  alert(`Invitation sent to ${email.value}`);
-  email.value = "";
+  void createInvite();
 }
+
+async function loadInvites(): Promise<void> {
+  if (!pages.currentSiteId || !auth.token) {
+    inviteHint.value = "Selecciona un sitio e inicia sesión para gestionar invitados.";
+    return;
+  }
+  const res = await fetch(`${apiBase}/api/sites/${pages.currentSiteId}/collaborators/invites`, {
+    headers: auth.authHeaders(),
+  });
+  const json = await readBuildevApiJson(res);
+  if (!json.ok) {
+    inviteHint.value = json.error ?? "No se pudieron cargar invitaciones.";
+    return;
+  }
+  const raw = json.data;
+  if (Array.isArray(raw)) {
+    invites.value = raw
+      .map((i) => {
+        if (typeof i !== "object" || i === null) return null;
+        const item = i as Record<string, unknown>;
+        const invitedAt =
+          typeof item.invitedAt === "string"
+            ? item.invitedAt
+            : typeof item.createdAt === "string"
+              ? item.createdAt
+              : "";
+        if (typeof item.email !== "string" || invitedAt.length === 0 || typeof item.status !== "string") {
+          return null;
+        }
+        const id = typeof item.id === "string" ? item.id : `${item.email}-${invitedAt}`;
+        return {
+          id,
+          email: item.email,
+          invitedAt,
+          status: item.status,
+          acceptPath: typeof item.acceptPath === "string" ? item.acceptPath : undefined,
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null);
+  }
+}
+
+async function createInvite(): Promise<void> {
+  if (!pages.currentSiteId || !auth.token) {
+    inviteHint.value = "Inicia sesión y selecciona un sitio para invitar colaboradores.";
+    return;
+  }
+  const res = await fetch(`${apiBase}/api/sites/${pages.currentSiteId}/collaborators/invites`, {
+    method: "POST",
+    headers: auth.authHeaders(),
+    body: JSON.stringify({ email: email.value }),
+  });
+  const json = await readBuildevApiJson(res);
+  if (!json.ok) {
+    inviteHint.value = json.error ?? "No se pudo crear la invitación.";
+    return;
+  }
+  inviteHint.value = `Invitación registrada para ${email.value}.`;
+  email.value = "";
+  await loadInvites();
+}
+
+onMounted(() => {
+  void loadInvites();
+});
 </script>
 
 <style scoped>
@@ -119,7 +236,51 @@ function sendInvite() {
 .section-hint { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 8px; }
 .divider { height: 1px; background: rgba(255,255,255,0.05); }
 
+.invite-hint { font-size: 12px; color: #aaa; margin: 0 0 10px; line-height: 1.4; }
 .invite-form { display: flex; gap: 8px; }
+.invites-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.invite-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  color: #d0d0d0;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.invite-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.invite-link-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.invite-link-input {
+  flex: 1;
+  min-width: 0;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.75);
+}
+.btn-copy-mini {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.invite-status { text-transform: uppercase; font-size: 10px; color: #9ca3af; }
 .email-input { 
   flex: 1; 
   background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); 

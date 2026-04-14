@@ -26,3 +26,9 @@ export function resolveApiBase(envVal: unknown): string {
     }
     return "";
 }
+
+/**
+ * Instancia única para el cliente: misma lógica que {@link resolveApiBase} con `import.meta.env.VITE_API_URL`.
+ * Usar en `fetch(\`${apiBase}/api/...\`)` (si está vacío, rutas relativas `/api/...`).
+ */
+export const apiBase: string = resolveApiBase(import.meta.env.VITE_API_URL);

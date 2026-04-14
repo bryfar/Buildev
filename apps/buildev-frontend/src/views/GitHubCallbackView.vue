@@ -59,9 +59,7 @@ import { ref, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth";
 
-import { resolveApiBase } from "../utils/apiBase";
-
-const API = resolveApiBase(import.meta.env.VITE_API_URL);
+import { apiBase } from "../utils/apiBase";
 
 const route = useRoute();
 const router = useRouter();
@@ -73,7 +71,7 @@ const error = ref<string | null>(null);
 const LOGIN_HTML_CLASS = "login-fullpage-active";
 
 function buildApiUrl(path: string): string {
-  return API.length > 0 ? `${API}${path}` : path;
+  return apiBase.length > 0 ? `${apiBase}${path}` : path;
 }
 
 onMounted(async () => {

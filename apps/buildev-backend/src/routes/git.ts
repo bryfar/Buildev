@@ -1,6 +1,6 @@
 import { Router, Response } from "express";
 import { z } from "zod";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest } from "../middleware/auth";
 import {
     githubGetFile,
     githubPutFile,
@@ -33,7 +33,7 @@ import { prisma } from "../services/db";
 
 export const gitRouter = Router();
 
-gitRouter.use(requireAuth as any);
+gitRouter.use(requireAuthHandler);
 
 const ImportBodySchema = z.object({
     siteId: z.string().min(1),

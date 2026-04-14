@@ -2,16 +2,17 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../services/db";
-import { requireAuth, AuthRequest, signToken } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest, signToken } from "../middleware/auth";
 import { assertSiteOwned } from "../services/buildevGitExport";
 import {
     BuildevProjectSettingsStoredSchema,
     PROJECT_SETTINGS_VARIABLE_KEY,
 } from "../services/buildevProjectSettings";
+import { defaultInviteExpiresAt, generateInviteToken } from "./siteInvitesPublic";
 
 export const sitesRouter = Router();
 
-sitesRouter.use(requireAuth as any);
+sitesRouter.use(requireAuthHandler);
 
 // ─── GET /api/sites ───────────────────────────────────────────────────────────
 sitesRouter.get("/", async (req: AuthRequest, res: Response) => {
@@ -82,6 +83,10 @@ const WorkspacePayloadSchema = z.object({
     })).default([]),
     activeDesignSystemId: z.string().optional(),
     installedPlugins: z.array(z.string()).default([]),
+});
+
+const CollaboratorInviteSchema = z.object({
+    email: z.string().email(),
 });
 
 sitesRouter.post("/", async (req: AuthRequest, res: Response) => {
@@ -242,4 +247,98 @@ sitesRouter.put("/:id/workspace", async (req: AuthRequest, res: Response) => {
     });
 
     res.json({ ok: true, data: payload });
+});
+
+// ─── GET /api/sites/:id/collaborators/invites ────────────────────────────────
+sitesRouter.get("/:id/collaborators/invites", async (req: AuthRequest, res: Response) => {
+    const siteId = req.params.id;
+    const allowed = await assertSiteOwned(req.auth!.userId, siteId);
+    if (!allowed) {
+        res.status(404).json({ ok: false, error: "Site not found" });
+        return;
+    }
+    const rows = await prisma.siteInvitation.findMany({
+        where: { siteId },
+        orderBy: { createdAt: "desc" },
+    });
+    const data = rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        invitedBy: row.invitedBy,
+        status: row.status,
+        invitedAt: row.createdAt.toISOString(),
+        createdAt: row.createdAt.toISOString(),
+        expiresAt: row.expiresAt?.toISOString() ?? null,
+        token: row.token,
+        acceptPath: `/invite?token=${encodeURIComponent(row.token)}`,
+    }));
+    res.json({ ok: true, data });
+});
+
+// ─── POST /api/sites/:id/collaborators/invites ───────────────────────────────
+sitesRouter.post("/:id/collaborators/invites", async (req: AuthRequest, res: Response) => {
+    const siteId = req.params.id;
+    const allowed = await assertSiteOwned(req.auth!.userId, siteId);
+    if (!allowed) {
+        res.status(404).json({ ok: false, error: "Site not found" });
+        return;
+    }
+    const parsed = CollaboratorInviteSchema.safeParse(req.body);
+    if (!parsed.success) {
+        res.status(400).json({ ok: false, error: parsed.error.flatten() });
+        return;
+    }
+
+    const normalizedEmail = parsed.data.email.trim().toLowerCase();
+    const now = new Date();
+    const existing = await prisma.siteInvitation.findFirst({
+        where: {
+            siteId,
+            email: normalizedEmail,
+            status: "pending",
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+        },
+    });
+    if (existing) {
+        res.json({
+            ok: true,
+            data: {
+                id: existing.id,
+                email: existing.email,
+                invitedBy: existing.invitedBy,
+                status: existing.status,
+                invitedAt: existing.createdAt.toISOString(),
+                createdAt: existing.createdAt.toISOString(),
+                expiresAt: existing.expiresAt?.toISOString() ?? null,
+                token: existing.token,
+                acceptPath: `/invite?token=${encodeURIComponent(existing.token)}`,
+                duplicate: true,
+            },
+        });
+        return;
+    }
+    const created = await prisma.siteInvitation.create({
+        data: {
+            siteId,
+            email: normalizedEmail,
+            token: generateInviteToken(),
+            invitedBy: req.auth!.userId,
+            status: "pending",
+            expiresAt: defaultInviteExpiresAt(),
+        },
+    });
+    res.status(201).json({
+        ok: true,
+        data: {
+            id: created.id,
+            email: created.email,
+            invitedBy: created.invitedBy,
+            status: created.status,
+            invitedAt: created.createdAt.toISOString(),
+            createdAt: created.createdAt.toISOString(),
+            expiresAt: created.expiresAt?.toISOString() ?? null,
+            token: created.token,
+            acceptPath: `/invite?token=${encodeURIComponent(created.token)}`,
+        },
+    });
 });

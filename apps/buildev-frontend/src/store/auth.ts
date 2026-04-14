@@ -1,8 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import { resolveApiBase } from "../utils/apiBase";
-
-const API = resolveApiBase(import.meta.env.VITE_API_URL);
+import { apiBase } from "../utils/apiBase";
 
 function readApiError(error: unknown): string {
     if (typeof error === "string") return error;
@@ -30,7 +28,7 @@ export const useAuthStore = defineStore("auth", () => {
             return;
         }
         try {
-            const res = await fetch(`${API}/api/auth/me`, {
+            const res = await fetch(`${apiBase}/api/auth/me`, {
                 headers: { Authorization: `Bearer ${token.value}` },
             });
             const json = (await res.json()) as {
@@ -61,7 +59,7 @@ export const useAuthStore = defineStore("auth", () => {
         if (!token.value) {
             throw new Error("Inicia sesión en Buildev primero.");
         }
-        const res = await fetch(`${API}/api/auth/github/authorize-url`, {
+        const res = await fetch(`${apiBase}/api/auth/github/authorize-url`, {
             headers: { Authorization: `Bearer ${token.value}` },
         });
         let json: { ok?: boolean; data?: { url?: string }; error?: string } = {};
@@ -86,25 +84,33 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     async function login(email: string, password: string) {
-        const res = await fetch(`${API}/api/auth/login`, {
+        const res = await fetch(`${apiBase}/api/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password }),
         });
-        const json = (await res.json()) as { ok?: boolean; error?: unknown };
-        if (!json.ok) throw new Error(readApiError(json.error));
+        const json = (await res.json()) as {
+            ok?: boolean;
+            error?: unknown;
+            data?: { token: string; userId: string; siteId?: string; role?: string };
+        };
+        if (!json.ok || !json.data) throw new Error(readApiError(json.error));
         _persist(json.data);
         await fetchGitHubStatus();
     }
 
     async function register(name: string, email: string, password: string, siteName: string) {
-        const res = await fetch(`${API}/api/auth/register`, {
+        const res = await fetch(`${apiBase}/api/auth/register`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ name, email, password, siteName }),
         });
-        const json = (await res.json()) as { ok?: boolean; error?: unknown };
-        if (!json.ok) throw new Error(readApiError(json.error));
+        const json = (await res.json()) as {
+            ok?: boolean;
+            error?: unknown;
+            data?: { token: string; userId: string; siteId?: string; role?: string };
+        };
+        if (!json.ok || !json.data) throw new Error(readApiError(json.error));
         _persist(json.data);
         await fetchGitHubStatus();
     }
@@ -150,7 +156,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     async function startGitHubLogin(): Promise<void> {
-        const res = await fetch(`${API}/api/auth/login/github/url`);
+        const res = await fetch(`${apiBase}/api/auth/login/github/url`);
         let json: { ok?: boolean; data?: { url?: string }; error?: string } = {};
         try {
             json = (await res.json()) as typeof json;
@@ -168,7 +174,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     async function startGoogleLogin(): Promise<void> {
-        const res = await fetch(`${API}/api/auth/login/google/url`);
+        const res = await fetch(`${apiBase}/api/auth/login/google/url`);
         let json: { ok?: boolean; data?: { url?: string }; error?: string } = {};
         try {
             json = (await res.json()) as typeof json;

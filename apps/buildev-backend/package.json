@@ -2,16 +2,22 @@
   "name": "@buildersite/backend",
   "version": "1.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only ./src/index.ts",
-    "build": "prisma generate && tsc",
-    "vercel-build": "prisma generate && prisma migrate deploy && tsc",
+    "dev": "yarn workspace @buildev/ai-engine run build && yarn workspace @buildersite/domain run build && yarn workspace @buildersite/sdk run build && ts-node-dev --respawn --transpile-only ./src/index.ts",
+    "build": "yarn workspace @buildev/ai-engine run build && yarn workspace @buildersite/domain run build && yarn workspace @buildersite/sdk run build && prisma generate && tsc",
+    "vercel-build": "yarn workspace @buildev/ai-engine run build && yarn workspace @buildersite/domain run build && yarn workspace @buildersite/sdk run build && prisma generate && prisma migrate deploy && tsc",
     "start": "node dist/index.js",
+    "migrate:site-invites": "node dist/scripts/migrateSiteInvites.js",
+    "migrate:site-invites:dry": "node dist/scripts/migrateSiteInvites.js --dry-run",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy"
   },
   "dependencies": {
+    "@buildev/ai-engine": "workspace:*",
     "@buildersite/domain": "workspace:*",
     "@prisma/client": "5.22.0",
     "bcryptjs": "^2.4.3",

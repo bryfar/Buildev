@@ -619,13 +619,13 @@ import BSAccountSettingsPanel from "../components/account/BSAccountSettingsPanel
 import { aiService } from "../services/aiService";
 import { gitService } from "../services/gitService";
 import { parseGithubRepoUrl } from "../utils/parseGithubRepoUrl";
+import { apiBase } from "../utils/apiBase";
 
 const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
 const store = usePagesStore();
 const ui = useUIStore();
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
 const view = ref<'projects' | 'pages' | 'symbols' | 'assets' | 'cms' | 'design-system'>('projects');
 const showAccountSettings = ref(false);
@@ -868,6 +868,20 @@ function resolveProjectView(projectType?: string): 'pages' | 'cms' {
   return 'pages';
 }
 
+/**
+ * Lee `projectType` de un sitio creado o devuelto por el API (objeto parcial).
+ *
+ * @param site Objeto sitio o registro local.
+ * @returns Valor de tipo de proyecto o `undefined`.
+ */
+function readProjectType(site: unknown): string | undefined {
+  if (site !== null && typeof site === "object" && "projectType" in site) {
+    const v = (site as { projectType?: unknown }).projectType;
+    return typeof v === "string" ? v : undefined;
+  }
+  return undefined;
+}
+
 function ensureDefaultDesignSystem() {
   if (designSystems.value.length === 0) {
     designSystems.value = [
@@ -886,7 +900,7 @@ function ensureDefaultDesignSystem() {
 
 async function loadCmsWorkspaceData() {
   try {
-    const res = await fetch(`${API}/api/sites/workspace`, { headers: auth.authHeaders() });
+    const res = await fetch(`${apiBase}/api/sites/workspace`, { headers: auth.authHeaders() });
     const json = await res.json();
     if (json.ok) {
       const bySite = (json.data?.bySite ?? {}) as Record<string, { designSystems: DesignSystemLibrary[]; activeDesignSystemId: string; installedPlugins: string[] }>;
@@ -936,7 +950,7 @@ async function saveCmsWorkspaceData() {
     installedPlugins: installedPluginsBySite.value[siteId] || [],
   };
   try {
-    await fetch(`${API}/api/sites/${siteId}/workspace`, {
+    await fetch(`${apiBase}/api/sites/${siteId}/workspace`, {
       method: "PUT",
       headers: { ...auth.authHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -1019,7 +1033,7 @@ function navToAIStudio() {
   router.push('/ai-studio');
 }
 
-const currentSite = computed(() => store.sites.find((s: any) => s.id === store.currentSiteId));
+const currentSite = computed(() => store.sites.find((s: { id: string }) => s.id === store.currentSiteId));
 const currentSiteId = computed(() => store.currentSiteId || "global");
 
 const designSystems = ref<DesignSystemLibrary[]>([]);
@@ -1309,7 +1323,7 @@ async function handleReverseUpload(e: Event) {
     if (site) {
       showCreateProject.value = false;
       await store.selectSite(site.id);
-      view.value = resolveProjectView(site.projectType);
+      view.value = resolveProjectView(readProjectType(site));
       if (view.value === 'cms') {
         cmsSection.value = 'content-pages';
       }

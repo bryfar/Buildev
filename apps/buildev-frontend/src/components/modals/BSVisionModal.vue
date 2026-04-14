@@ -24,8 +24,8 @@
             </div>
             <h3>Drop an image to generate code</h3>
             <p>Upload a screenshot and let Buildev decompose it into elements.</p>
-            <input type="file" ref="fileInput" @change="handleFileSelect" accept="image/*" hidden />
-            <button class="btn-browse" @click="$refs.fileInput.click()">Browse Files</button>
+            <input type="file" ref="fileInputRef" accept="image/*" hidden @change="handleFileSelect" />
+            <button type="button" class="btn-browse" @click="openFilePicker">Browse Files</button>
           </div>
 
           <div v-else class="preview-wrap">
@@ -42,7 +42,7 @@
         <div v-else class="loading-state">
           <div class="vision-loader">
             <div class="scanner-line"></div>
-            <img :src="previewUrl" class="scanning-preview" />
+            <img :src="previewUrl ?? undefined" class="scanning-preview" alt="" />
           </div>
           <div class="loading-text">
             <h2 class="animate-pulse">Analyzing Design...</h2>
@@ -63,9 +63,16 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useAuthStore } from "../../store/auth";
+import { apiBase } from "../../utils/apiBase";
 
 const emit = defineEmits(['close', 'generated']);
 const auth = useAuthStore();
+
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+function openFilePicker(): void {
+  fileInputRef.value?.click();
+}
 
 const isLoading = ref(false);
 const isDragOver = ref(false);
@@ -113,8 +120,7 @@ async function generateFromVision() {
   }, 2000);
 
   try {
-    const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
-    const res = await fetch(`${API}/api/ai/vision`, {
+    const res = await fetch(`${apiBase}/api/ai/vision`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -135,8 +141,8 @@ async function generateFromVision() {
       emit('close');
     }, 1000);
 
-  } catch (err: any) {
-    alert("AI Vision Error: " + err.message);
+  } catch (err: unknown) {
+    alert("AI Vision Error: " + (err instanceof Error ? err.message : String(err)));
     isLoading.value = false;
     clearInterval(stepInterval);
   }

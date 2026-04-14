@@ -2,13 +2,13 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import { v4 as uuid } from "uuid";
 import { prisma } from "../services/db";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest } from "../middleware/auth";
 import { requireNonEmptySiteId } from "../middleware/activeSite";
 import type { BSBlock, BSVariant } from "@buildersite/domain";
 
 export const pagesRouter = Router();
 
-pagesRouter.use(requireAuth as any);
+pagesRouter.use(requireAuthHandler);
 
 // ─── GET /api/pages ───────────────────────────────────────────────────────────
 pagesRouter.get("/", async (req: AuthRequest, res: Response) => {

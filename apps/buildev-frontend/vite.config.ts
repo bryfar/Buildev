@@ -1,5 +1,10 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
+
+const frontendDir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * En builds de producción en Vercel, avisa si falta VITE_API_URL (el front llamará a /api en el dominio
@@ -37,6 +42,22 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    resolve: {
+      alias: {
+        "@buildersite/domain": path.join(
+          frontendDir,
+          "../../packages/buildersite-domain/src/index.ts",
+        ),
+        "@buildersite/sdk": path.join(
+          frontendDir,
+          "../../packages/buildersite-sdk/src/index.ts",
+        ),
+        "@buildersite/sdk/vue": path.join(
+          frontendDir,
+          "../../packages/buildersite-sdk/src/vue.ts",
+        ),
+      },
+    },
     server: {
       port: 5173,
       /** Evita saltar a 5174 en silencio (las OAuth Apps suelen registrar solo 5173). */

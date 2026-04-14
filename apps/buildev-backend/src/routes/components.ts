@@ -2,12 +2,12 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../services/db";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest } from "../middleware/auth";
 import { requireNonEmptySiteId } from "../middleware/activeSite";
 
 export const componentsRouter = Router();
 
-componentsRouter.use(requireAuth as any);
+componentsRouter.use(requireAuthHandler);
 
 const CreateBodySchema = z.object({
     name: z.string().min(1),

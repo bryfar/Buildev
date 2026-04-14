@@ -76,9 +76,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth";
-import { resolveApiBase } from "../utils/apiBase";
-
-const API = resolveApiBase(import.meta.env.VITE_API_URL);
+import { apiBase } from "../utils/apiBase";
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -93,7 +91,7 @@ const providerLabel = computed(() => (provider.value === "google" ? "Google" : "
 const LOGIN_HTML_CLASS = "login-fullpage-active";
 
 function buildApiUrl(path: string): string {
-  return API.length > 0 ? `${API}${path}` : path;
+  return apiBase.length > 0 ? `${apiBase}${path}` : path;
 }
 
 onMounted(async () => {
@@ -125,7 +123,7 @@ onMounted(async () => {
       json = JSON.parse(raw) as typeof json;
     } catch {
       throw new Error(
-        `El API respondió ${res.status} sin JSON válido. Comprueba VITE_API_URL, CORS y que el redirect_uri de GitHub coincida con esta URL (${window.location.origin}/auth/github).`,
+        `El API respondió ${res.status} sin JSON válido. Comprueba VITE_API_URL, CORS y que las URIs de redirección en GitHub/Google coincidan con ${window.location.origin}/auth/github o …/auth/google.`,
       );
     }
     if (!json.ok || !json.data?.token) {
@@ -134,7 +132,11 @@ onMounted(async () => {
     message.value = "Sesión lista. Redirigiendo…";
     auth.persistSession(json.data);
     await auth.fetchGitHubStatus();
-    await router.replace("/");
+    const stored = sessionStorage.getItem("bs_post_oauth_redirect");
+    sessionStorage.removeItem("bs_post_oauth_redirect");
+    const next =
+      stored && stored.startsWith("/") ? stored : "/";
+    await router.replace(next);
   } catch (e: unknown) {
     if (e instanceof TypeError) {
       error.value = `No se pudo contactar al API (Failed to fetch). Destino: ${endpoint}. Revisa VITE_API_URL y que el backend sea accesible desde el navegador.`;

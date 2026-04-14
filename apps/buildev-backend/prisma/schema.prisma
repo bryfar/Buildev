@@ -32,6 +32,7 @@ model Site {
   deployments    DeploymentRecord[]
   userId         String?   // Added userId to Site
   owner          User?     @relation("SiteOwner", fields: [userId], references: [id])
+  invitations    SiteInvitation[]
 }
 
 model User {
@@ -51,6 +52,22 @@ model User {
   githubUsername    String?
 
   publications Publication[]
+}
+
+/// Invitación para colaborar en un sitio (aceptación vía token).
+model SiteInvitation {
+  id         String    @id @default(uuid())
+  siteId     String
+  site       Site      @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  email      String
+  token      String    @unique
+  invitedBy  String
+  status     String    @default("pending")
+  createdAt  DateTime  @default(now())
+  expiresAt  DateTime?
+
+  @@index([siteId])
+  @@index([email])
 }
 
 model Page {
