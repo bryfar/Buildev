@@ -50,17 +50,22 @@ app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
   res.status(status >= 400 && status < 600 ? status : 500).json({ ok: false, error: message });
 });
 
-// ─── Arranque ─────────────────────────────────────────────────────────────────
+// ─── Arranque (solo fuera de Vercel: allí el runtime usa la app exportada) ────
 const PORT = Number(process.env.PORT) || 4000;
-const server = app.listen(PORT, () => {
-  console.log(`[Buildersite Backend] ▶  http://localhost:${PORT}`);
-  console.log("  Rutas privadas: /api/auth | /api/pages | /api/sites | /api/components | /api/content-models | /api/git");
-  console.log("  Rutas SDK:      /api/public/page | /api/public/events | /api/public/page/:id/publications");
-});
-server.on("error", (err: NodeJS.ErrnoException) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(
-      `[Buildersite Backend] El puerto ${PORT} ya está en uso. Cierra la otra instancia del API o define otra PORT en apps/buildev-backend/.env y VITE_DEV_API_PROXY en el front.`,
-    );
-  }
-});
+if (!process.env.VERCEL) {
+  const server = app.listen(PORT, () => {
+    console.log(`[Buildersite Backend] ▶  http://localhost:${PORT}`);
+    console.log("  Rutas privadas: /api/auth | /api/pages | /api/sites | /api/components | /api/content-models | /api/git");
+    console.log("  Rutas SDK:      /api/public/page | /api/public/events | /api/public/page/:id/publications");
+  });
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(
+        `[Buildersite Backend] El puerto ${PORT} ya está en uso. Cierra la otra instancia del API o define otra PORT en apps/buildev-backend/.env y VITE_DEV_API_PROXY en el front.`,
+      );
+    }
+  });
+}
+
+/** Entrada para Vercel (Express on Vercel); localmente se usa `app.listen` arriba. */
+export default app;
