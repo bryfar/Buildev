@@ -14,9 +14,8 @@
     <div class="block-section">
       <p class="section-label">CATÁLOGO ({{ totalCatalogPresets }})</p>
       <p class="lib-desc">
-        {{ sectionPresetCount }} secciones (12 familias × 10 variantes), inspiradas en librerías como
-        <a href="https://www.relume.io/" target="_blank" rel="noopener noreferrer">Relume</a>. Vista previa a la
-        izquierda; arrastra el título, usa «Lienzo» para insertar en la página o «Librería» para guardar el símbolo.
+        {{ sectionPresetCount }} secciones (12 familias × 10 variantes). Vista previa a la izquierda; arrastra el
+        título, usa «Lienzo» para insertar en la página o «Librería» para guardar el símbolo.
       </p>
       <div class="preset-categories">
         <details v-for="group in presetGroups" :key="group.name" class="preset-details">
