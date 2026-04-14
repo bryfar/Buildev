@@ -53,7 +53,7 @@ The repo includes a root [`vercel.json`](./vercel.json) so Vercel can build from
 
 1. Import the repository in Vercel and leave **Root Directory** empty (or `.`).
 2. Do not override Install / Build / Output in the dashboard (the root `vercel.json` sets them).
-3. Add **`VITE_API_URL`** = your deployed backend URL (no trailing slash), then redeploy. The frontend build **fails on Vercel** if this is missing (see `assertVercelProductionApiUrl` in [`apps/buildev-frontend/vite.config.ts`](./apps/buildev-frontend/vite.config.ts)); use **`VITE_ALLOW_EMPTY_API_URL=1`** only for exceptional preview builds without an API.
+3. Add **`VITE_API_URL`** = your deployed backend URL (no trailing slash), then redeploy. If it is missing, the build still completes but you get a **warning** in the logs (and the app will not reach a real API until you set it); set **`VITE_FAIL_BUILD_WITHOUT_API_URL=1`** for a strict failing build, or **`VITE_ALLOW_EMPTY_API_URL=1`** to silence the warning.
 
 **Option B — Root directory = `apps/buildev-frontend`**
 
