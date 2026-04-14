@@ -45,6 +45,7 @@ __metadata:
   resolution: "@buildersite/backend@workspace:apps/buildev-backend"
   dependencies:
     "@buildersite/domain": "workspace:*"
+    "@buildev/ai-engine": "workspace:*"
     "@prisma/client": "npm:5.22.0"
     "@types/bcryptjs": "npm:^2.4.6"
     "@types/cors": "npm:^2.8.17"
@@ -58,6 +59,7 @@ __metadata:
     express: "npm:^4.18.3"
     jsonwebtoken: "npm:^9.0.2"
     prisma: "npm:5.22.0"
+    serverless-http: "npm:^4.0.0"
     ts-node-dev: "npm:^2.0.0"
     typescript: "npm:^5.6.3"
     uuid: "npm:^10.0.0"
@@ -109,7 +111,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@buildev/ai-engine@workspace:packages/ai-engine":
+"@buildev/ai-engine@workspace:*, @buildev/ai-engine@workspace:packages/ai-engine":
   version: 0.0.0-use.local
   resolution: "@buildev/ai-engine@workspace:packages/ai-engine"
   dependencies:
@@ -3446,6 +3448,13 @@ __metadata:
     parseurl: "npm:~1.3.3"
     send: "npm:~0.19.1"
   checksum: 10c0/36320397a073c71bedf58af48a4a100fe6d93f07459af4d6f08b9a7217c04ce2a4939e0effd842dc7bece93ffcd59eb52f58c4fff2a8e002dc29ae6b219cd42b
+  languageName: node
+  linkType: hard
+
+"serverless-http@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "serverless-http@npm:4.0.0"
+  checksum: 10c0/e613beb1c93a331281fb0302423907531d9d197e7f7fef94466e22d350bb48b72e6020d39b5c7569a2d6736fde945cb198ed1d12001bfc9e82a5de791bb84c7d
   languageName: node
   linkType: hard
 
