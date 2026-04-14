@@ -1,15 +1,22 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, NextFunction } from "express";
+import type { Publication, Site } from "@prisma/client";
 import { prisma } from "../services/db";
 import { evaluateTargeting } from "@buildersite/sdk";
 import type { BSVariant, BSBlock } from "@buildersite/domain";
 
 export const publicRouter = Router();
 
+type PublicSdkRequest = Request & { site: Site };
+
+function siteFrom(req: Request): Site {
+    return (req as PublicSdkRequest).site;
+}
+
 /**
  * Middleware: verifica que la petición incluya un API Key válido del sitio.
  * Usado sólo en las rutas públicas del SDK (lectura de contenido publicado).
  */
-async function requireApiKey(req: Request, res: Response, next: Function) {
+async function requireApiKey(req: Request, res: Response, next: NextFunction): Promise<void> {
     const key = req.headers["x-buildersite-key"] as string | undefined;
     if (!key) {
         res.status(401).json({ ok: false, error: "Missing x-buildersite-key header" });
@@ -20,7 +27,7 @@ async function requireApiKey(req: Request, res: Response, next: Function) {
         res.status(401).json({ ok: false, error: "Invalid API key" });
         return;
     }
-    (req as any).site = site;
+    (req as PublicSdkRequest).site = site;
     next();
 }
 
@@ -34,7 +41,7 @@ publicRouter.get("/page", async (req: Request, res: Response) => {
         urlPath?: string;
         userAttributes?: string;
     };
-    const siteId = (req as any).site.id;
+    const siteId = siteFrom(req).id;
 
     const page = await prisma.page.findFirst({
         where: { siteId, urlPath, status: "published" },
@@ -81,7 +88,7 @@ publicRouter.get("/page", async (req: Request, res: Response) => {
 publicRouter.get("/content/:model", async (req: Request, res: Response) => {
     const { model } = req.params;
     const { urlPath = "/" } = req.query as { urlPath?: string };
-    const siteId = (req as any).site.id;
+    const siteId = siteFrom(req).id;
 
     // Por ahora: busca páginas con model="page" o devuelve 404 para modelos no implementados
     if (model === "page") {
@@ -100,12 +107,27 @@ publicRouter.get("/content/:model", async (req: Request, res: Response) => {
 
 // ─── GET /api/public/page/:id/publications ────────────────────────────────────
 publicRouter.get("/page/:id/publications", async (req: Request, res: Response) => {
+    const siteId = siteFrom(req).id;
+    const page = await prisma.page.findFirst({
+        where: { id: req.params.id, siteId },
+        select: { id: true },
+    });
+    if (!page) {
+        res.status(404).json({ ok: false, error: "Not found" });
+        return;
+    }
     const pubs = await prisma.publication.findMany({
-        where: { pageId: req.params.id },
+        where: { pageId: page.id, siteId },
         orderBy: { publishedAt: "desc" },
         take: 20,
     });
-    res.json({ ok: true, data: pubs.map((p: any) => ({ ...p, snapshot: JSON.parse(p.snapshotJson) })) });
+    res.json({
+        ok: true,
+        data: pubs.map((p: Publication) => ({
+            ...p,
+            snapshot: JSON.parse(p.snapshotJson) as unknown,
+        })),
+    });
 });
 
 // ─── POST /api/public/events ──────────────────────────────────────────────────
@@ -114,7 +136,15 @@ publicRouter.post("/events", async (req: Request, res: Response) => {
         type: string; pageId: string; sessionId: string;
         target?: string; metadata?: Record<string, unknown>;
     };
-    const siteId = (req as any).site.id;
+    const siteId = siteFrom(req).id;
+    const page = await prisma.page.findFirst({
+        where: { id: pageId, siteId },
+        select: { id: true },
+    });
+    if (!page) {
+        res.status(404).json({ ok: false, error: "Page not found" });
+        return;
+    }
     await prisma.event.create({
         data: {
             siteId, pageId, type, sessionId,

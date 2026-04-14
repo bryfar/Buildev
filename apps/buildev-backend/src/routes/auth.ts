@@ -3,14 +3,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../services/db";
-import { signToken, type AuthPayload } from "../middleware/auth";
+import { signToken, verifySessionJwt } from "../middleware/auth";
+import { githubLoginRedirectUri, githubRepoLinkRedirectUri } from "../config/oauthEnv";
+import {
+    getGithubClientId,
+    getGithubClientSecret,
+    isGithubOAuthConfigured,
+} from "../config/githubAppEnv";
 import { registerSocialLoginRoutes } from "./authSocialLogin";
+import { resolveSessionSiteId } from "../services/sessionSite";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "buildersite_dev_secret";
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID ?? "";
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET ?? "";
-/** Must match the Authorization callback URL in the GitHub OAuth App (typically the frontend route). */
-const GITHUB_OAUTH_CALLBACK_URL = process.env.GITHUB_OAUTH_CALLBACK_URL ?? "http://localhost:5173/github/callback";
 
 export const authRouter = Router();
 
@@ -40,11 +43,15 @@ authRouter.post("/register", async (req: Request, res: Response) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const site = await prisma.site.create({
-        data: { name: siteName, defaultLocale: "es" },
-    });
     const user = await prisma.user.create({
-        data: { name, email, passwordHash, role: "admin", siteId: site.id },
+        data: { name, email, passwordHash, role: "admin" },
+    });
+    const site = await prisma.site.create({
+        data: { name: siteName, defaultLocale: "es", userId: user.id },
+    });
+    await prisma.user.update({
+        where: { id: user.id },
+        data: { siteId: site.id },
     });
 
     const token = signToken({ userId: user.id, siteId: site.id, role: user.role });
@@ -87,7 +94,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
         return;
     }
 
-    const siteId = user.siteId ?? "dev-site";
+    const siteId = await resolveSessionSiteId(user.id);
     const token = signToken({ userId: user.id, siteId, role: user.role });
     res.json({
         ok: true,
@@ -104,7 +111,11 @@ authRouter.get("/me", async (req: Request, res: Response) => {
     }
     try {
         const raw = authHeader.slice(7);
-        const payload = jwt.verify(raw, JWT_SECRET) as AuthPayload;
+        const payload = verifySessionJwt(raw);
+        if (!payload) {
+            res.status(401).json({ ok: false, error: "Invalid token" });
+            return;
+        }
         const user = await prisma.user.findUnique({
             where: { id: payload.userId },
             select: {
@@ -138,8 +149,31 @@ authRouter.get("/me", async (req: Request, res: Response) => {
 
 // ─── GET /api/auth/github/oauth-ready (público: solo indica si el servidor puede OAuth) ─
 authRouter.get("/github/oauth-ready", (_req: Request, res: Response) => {
-    const ready = Boolean(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET);
-    res.json({ ok: true, data: { ready } });
+    const rawId = getGithubClientId();
+    const rawSecret = getGithubClientSecret();
+    const ready = isGithubOAuthConfigured();
+    let hint: string | null = null;
+    if (!ready) {
+        if (!rawId && !rawSecret) {
+            hint = "Faltan GITHUB_CLIENT_ID y GITHUB_CLIENT_SECRET en apps/buildev-backend/.env (o variables del host). Reinicia el API tras guardar.";
+        } else if (!rawId) {
+            hint = "Falta GITHUB_CLIENT_ID.";
+        } else if (!rawSecret) {
+            hint = "Falta GITHUB_CLIENT_SECRET.";
+        } else {
+            hint =
+                "GITHUB_CLIENT_ID o GITHUB_CLIENT_SECRET parecen valores de plantilla; sustitúyelos por los de tu OAuth App en GitHub (Developer Settings → OAuth Apps).";
+        }
+    }
+    res.json({
+        ok: true,
+        data: {
+            ready,
+            hint,
+            linkCallbackUrl: githubRepoLinkRedirectUri(),
+            loginCallbackUrl: githubLoginRedirectUri(),
+        },
+    });
 });
 
 // ─── GET /api/auth/github/authorize-url ───────────────────────────────────────
@@ -149,21 +183,25 @@ authRouter.get("/github/authorize-url", async (req: Request, res: Response) => {
         res.status(401).json({ ok: false, error: "Authorization required" });
         return;
     }
-    if (!GITHUB_CLIENT_ID) {
-        res.status(503).json({ ok: false, error: "GitHub OAuth no está configurado (GITHUB_CLIENT_ID)." });
+    if (!isGithubOAuthConfigured()) {
+        res.status(503).json({ ok: false, error: "GitHub OAuth no está configurado (GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET)." });
         return;
     }
     try {
         const raw = authHeader.slice(7);
-        const payload = jwt.verify(raw, JWT_SECRET) as AuthPayload;
+        const payload = verifySessionJwt(raw);
+        if (!payload) {
+            res.status(401).json({ ok: false, error: "Invalid token" });
+            return;
+        }
         const state = jwt.sign(
             { userId: payload.userId, purpose: "github_oauth" },
             JWT_SECRET,
             { expiresIn: "15m" },
         );
         const params = new URLSearchParams({
-            client_id: GITHUB_CLIENT_ID,
-            redirect_uri: GITHUB_OAUTH_CALLBACK_URL,
+            client_id: getGithubClientId(),
+            redirect_uri: githubRepoLinkRedirectUri(),
             scope: "repo",
             state,
         });
@@ -186,7 +224,7 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
         res.status(400).json({ ok: false, error: parsed.error.flatten() });
         return;
     }
-    if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
+    if (!isGithubOAuthConfigured()) {
         res.status(503).json({ ok: false, error: "GitHub OAuth no está configurado." });
         return;
     }
@@ -200,7 +238,11 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
         return;
     }
     try {
-        const session = jwt.verify(authHeader.slice(7), JWT_SECRET) as AuthPayload;
+        const session = verifySessionJwt(authHeader.slice(7));
+        if (!session) {
+            res.status(401).json({ ok: false, error: "Token inválido." });
+            return;
+        }
         const decoded = jwt.verify(parsed.data.state, JWT_SECRET) as { userId: string; purpose?: string };
         if (decoded.purpose !== "github_oauth" || !decoded.userId) {
             res.status(400).json({ ok: false, error: "Estado OAuth inválido." });
@@ -221,10 +263,10 @@ authRouter.post("/github/callback", async (req: Request, res: Response) => {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                client_id: GITHUB_CLIENT_ID,
-                client_secret: GITHUB_CLIENT_SECRET,
+                client_id: getGithubClientId(),
+                client_secret: getGithubClientSecret(),
                 code: parsed.data.code,
-                redirect_uri: GITHUB_OAUTH_CALLBACK_URL,
+                redirect_uri: githubRepoLinkRedirectUri(),
             }),
         });
         const tokenJson = (await tokenRes.json()) as {

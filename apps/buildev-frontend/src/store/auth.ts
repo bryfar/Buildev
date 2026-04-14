@@ -74,7 +74,7 @@ export const useAuthStore = defineStore("auth", () => {
             const detail =
                 typeof json.error === "string"
                     ? json.error
-                    : `HTTP ${res.status}. Revisa GITHUB_CLIENT_ID y GITHUB_OAUTH_CALLBACK_URL en el backend.`;
+                    : `HTTP ${res.status}. Revisa GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_OAUTH_CALLBACK_URL o PUBLIC_APP_URL en el backend.`;
             throw new Error(detail);
         }
         window.location.assign(json.data.url);
@@ -124,14 +124,19 @@ export const useAuthStore = defineStore("auth", () => {
         localStorage.removeItem("bs_role");
     }
 
-    function _persist(data: { token: string; userId: string; siteId: string; role?: string }) {
+    function _persist(data: { token: string; userId: string; siteId?: string; role?: string }) {
+        const sid = (data.siteId ?? "").trim();
         token.value = data.token;
         userId.value = data.userId;
-        siteId.value = data.siteId;
+        siteId.value = sid.length > 0 ? sid : null;
         role.value = data.role ?? "editor";
         localStorage.setItem("bs_token", data.token);
         localStorage.setItem("bs_userId", data.userId);
-        localStorage.setItem("bs_siteId", data.siteId);
+        if (sid.length > 0) {
+            localStorage.setItem("bs_siteId", sid);
+        } else {
+            localStorage.removeItem("bs_siteId");
+        }
         localStorage.setItem("bs_role", data.role ?? "editor");
     }
 
@@ -140,7 +145,7 @@ export const useAuthStore = defineStore("auth", () => {
      *
      * @param data Token y metadatos del API
      */
-    function persistSession(data: { token: string; userId: string; siteId: string; role?: string }): void {
+    function persistSession(data: { token: string; userId: string; siteId?: string; role?: string }): void {
         _persist(data);
     }
 
@@ -156,7 +161,7 @@ export const useAuthStore = defineStore("auth", () => {
             const detail =
                 typeof json.error === "string"
                     ? json.error
-                    : `HTTP ${res.status}. Configura GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_LOGIN_REDIRECT_URI (misma URL autorizada en la GitHub OAuth App).`;
+                    : `HTTP ${res.status}. En el API: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_LOGIN_REDIRECT_URI o PUBLIC_APP_URL (misma URL que en la GitHub OAuth App).`;
             throw new Error(detail);
         }
         window.location.assign(json.data.url);

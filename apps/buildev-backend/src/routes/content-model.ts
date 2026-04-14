@@ -2,6 +2,7 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../services/db";
 import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireNonEmptySiteId } from "../middleware/activeSite";
 import type { BSFieldDefinition } from "@buildersite/domain";
 
 export const contentModelRouter = Router();
@@ -33,6 +34,7 @@ contentModelRouter.get("/", async (req: AuthRequest, res: Response) => {
 
 // ─── POST /api/content-models ─────────────────────────────────────────────────
 contentModelRouter.post("/", async (req: AuthRequest, res: Response) => {
+    if (!requireNonEmptySiteId(req, res)) return;
     const parsed = CreateModelSchema.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ ok: false, error: parsed.error.flatten() }); return;
@@ -55,9 +57,17 @@ const UpdateModelSchema = z.object({
 });
 
 contentModelRouter.patch("/:id", async (req: AuthRequest, res: Response) => {
+    if (!requireNonEmptySiteId(req, res)) return;
     const parsed = UpdateModelSchema.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ ok: false, error: parsed.error.flatten() }); return;
+    }
+    const existing = await prisma.contentModel.findFirst({
+        where: { id: req.params.id, siteId: req.auth!.siteId },
+    });
+    if (!existing) {
+        res.status(404).json({ ok: false, error: "Model not found" });
+        return;
     }
     const { fields, ...rest } = parsed.data;
     const data: Record<string, unknown> = { ...rest };
@@ -68,7 +78,14 @@ contentModelRouter.patch("/:id", async (req: AuthRequest, res: Response) => {
 
 // ─── DELETE /api/content-models/:id ──────────────────────────────────────────
 contentModelRouter.delete("/:id", async (req: AuthRequest, res: Response) => {
-    await prisma.contentModel.delete({ where: { id: req.params.id } });
+    if (!requireNonEmptySiteId(req, res)) return;
+    const result = await prisma.contentModel.deleteMany({
+        where: { id: req.params.id, siteId: req.auth!.siteId },
+    });
+    if (result.count === 0) {
+        res.status(404).json({ ok: false, error: "Model not found" });
+        return;
+    }
     res.json({ ok: true, data: null });
 });
 

@@ -47,6 +47,11 @@ async function main() {
         console.log(`ℹ️ User already exists: ${user.email} (${user.id})`);
     }
 
+    await prisma.site.update({
+        where: { id: site.id },
+        data: { userId: user.id },
+    });
+
     // Create active home page
     const homePage = await prisma.page.findFirst({
         where: { siteId: site.id, urlPath: "/" }

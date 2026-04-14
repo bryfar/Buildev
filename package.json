@@ -10,6 +10,7 @@
   "scripts": {
     "bootstrap": "yarn install",
     "build": "yarn workspace @buildersite/frontend run build",
+    "vercel-build:backend": "yarn workspace @buildersite/backend run vercel-build",
     "dev": "run-p -l dev:backend dev:editor",
     "dev:editor": "yarn workspace @buildersite/frontend dev",
     "dev:backend": "yarn workspace @buildersite/backend dev"

@@ -43,11 +43,19 @@ onMounted(async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, state }),
     });
-    const json = (await res.json()) as {
+    const raw = await res.text();
+    let json: {
       ok?: boolean;
       error?: string;
-      data?: { token: string; userId: string; siteId: string; role?: string };
+      data?: { token: string; userId: string; siteId?: string; role?: string };
     };
+    try {
+      json = JSON.parse(raw) as typeof json;
+    } catch {
+      throw new Error(
+        `El API respondió ${res.status} sin JSON válido. Comprueba VITE_API_URL, CORS y que el redirect_uri de GitHub coincida con esta URL (${window.location.origin}/auth/github).`,
+      );
+    }
     if (!json.ok || !json.data?.token) {
       throw new Error(typeof json.error === "string" ? json.error : "No se pudo iniciar sesión");
     }

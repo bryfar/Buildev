@@ -39,11 +39,32 @@ export const BuildevExportSchema = z.object({
 
 export type BuildevExport = z.infer<typeof BuildevExportSchema>;
 
+/**
+ * Comprueba que el usuario puede operar sobre el sitio: propietario explícito (`Site.userId`)
+ * o sitio «legacy» sin `userId` vinculado solo a `User.siteId`.
+ *
+ * @param userId Identificador del usuario autenticado.
+ * @param siteId Identificador del sitio.
+ * @returns El sitio si hay acceso; si no, `null`.
+ */
 export async function assertSiteOwned(userId: string, siteId: string): Promise<{ id: string } | null> {
-    return prisma.site.findFirst({
+    const owned = await prisma.site.findFirst({
         where: { id: siteId, userId },
         select: { id: true },
     });
+    if (owned) return owned;
+
+    const legacySite = await prisma.site.findFirst({
+        where: { id: siteId, userId: null },
+        select: { id: true },
+    });
+    if (!legacySite) return null;
+
+    const user = await prisma.user.findFirst({
+        where: { id: userId, siteId },
+        select: { id: true },
+    });
+    return user ? { id: legacySite.id } : null;
 }
 
 export async function readVariableJson(siteId: string, key: string): Promise<unknown | null> {

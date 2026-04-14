@@ -4,8 +4,9 @@ import { v4 as uuidv4 } from "uuid";
 import type { BSPage, BSBlock, BSVariant } from "@buildersite/sdk";
 import { useAuthStore } from "./auth";
 import { createBlock } from "../data/blocks";
+import { resolveApiBase } from "../utils/apiBase";
 
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const API = resolveApiBase(import.meta.env.VITE_API_URL);
 
 interface ExtendedPage extends BSPage {
   prompt?: string;
@@ -118,7 +119,7 @@ export const usePagesStore = defineStore("pages", () => {
     }
   }
 
-  async function createSite(name: string, options: any = {}) {
+  async function createSite(name: string, options: Record<string, unknown> = {}) {
     try {
       const res = await fetch(`${API}/api/sites`, {
         method: "POST",
@@ -128,15 +129,29 @@ export const usePagesStore = defineStore("pages", () => {
           ...options
         }),
       });
-      const json = await res.json();
-      if (json.ok) {
+      const json = (await res.json()) as {
+        ok?: boolean;
+        data?: Record<string, unknown> & { id: string };
+        token?: string;
+        error?: unknown;
+      };
+      if (json.ok && json.data) {
         sites.value.unshift(json.data);
+        const uid = auth.userId;
+        if (typeof json.token === "string" && json.token.length > 0 && typeof uid === "string" && uid.length > 0) {
+          auth.persistSession({
+            token: json.token,
+            userId: uid,
+            siteId: json.data.id,
+            role: auth.role ?? undefined,
+          });
+        }
         return json.data;
       } else {
-        throw new Error(json.error || "Failed to create site");
+        throw new Error(typeof json.error === "string" ? json.error : "Failed to create site");
       }
     } catch (err) {
-      console.error("Store: createSite backend error, creating locally", err);
+      void err;
       const localSite = {
         id: uuidv4(),
         name,

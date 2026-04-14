@@ -1,6 +1,7 @@
 import { Router, Response } from "express";
 import { prisma } from "../services/db";
 import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireNonEmptySiteId } from "../middleware/activeSite";
 
 export const componentsRouter = Router();
 
@@ -15,14 +16,16 @@ componentsRouter.get("/", async (req: AuthRequest, res: Response) => {
             orderBy: { updatedAt: "desc" },
         });
         res.json({ ok: true, data: components });
-    } catch (err: any) {
-        res.status(500).json({ ok: false, error: err.message });
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error";
+        res.status(500).json({ ok: false, error: msg });
     }
 });
 
 // Create component from block
 componentsRouter.post("/", async (req: AuthRequest, res: Response) => {
     try {
+        if (!requireNonEmptySiteId(req, res)) return;
         const siteId = req.auth!.siteId;
         const { name, description, rootBlock } = req.body;
 
@@ -35,20 +38,27 @@ componentsRouter.post("/", async (req: AuthRequest, res: Response) => {
             },
         });
         res.json({ ok: true, data: component });
-    } catch (err: any) {
-        res.status(500).json({ ok: false, error: err.message });
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error";
+        res.status(500).json({ ok: false, error: msg });
     }
 });
 
 // Delete component
 componentsRouter.delete("/:id", async (req: AuthRequest, res: Response) => {
     try {
+        if (!requireNonEmptySiteId(req, res)) return;
         const siteId = req.auth!.siteId;
-        await prisma.component.delete({
+        const removed = await prisma.component.deleteMany({
             where: { id: req.params.id, siteId },
         });
+        if (removed.count === 0) {
+            res.status(404).json({ ok: false, error: "Component not found" });
+            return;
+        }
         res.json({ ok: true });
-    } catch (err: any) {
-        res.status(500).json({ ok: false, error: err.message });
+    } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Error";
+        res.status(500).json({ ok: false, error: msg });
     }
 });
