@@ -27,16 +27,33 @@ const el = ref<HTMLElement | null>(null);
 
 const computedStyle = computed(() => {
   const breakpoint = store.currentBreakpoint;
-  const base = props.block.props as any;
-  const responsive = base.responsive?.[breakpoint] ?? {};
+  const base = props.block.props as Record<string, unknown>;
+  const responsive = (base.responsive as Record<string, Record<string, unknown>> | undefined)?.[breakpoint] ?? {};
   const merged = { ...base, ...responsive };
-  
-  return {
-    fontSize: (merged.fontSize || 16) + 'px',
-    color: merged.color || 'inherit',
-    fontWeight: merged.fontWeight || 'normal',
-    textAlign: merged.textAlign || 'left'
+  const fs = merged.fontSize;
+  const fontSize =
+    fs === undefined || fs === ""
+      ? "16px"
+      : typeof fs === "number"
+        ? `${fs}px`
+        : String(fs).match(/px|rem|em|%$/)
+          ? String(fs)
+          : `${fs}px`;
+  const out: Record<string, string> = {
+    fontSize,
+    color: merged.color ? String(merged.color) : "inherit",
+    fontWeight: merged.fontWeight ? String(merged.fontWeight) : "normal",
+    textAlign: merged.textAlign ? String(merged.textAlign) : "left",
   };
+  if (merged.fontFamily) out.fontFamily = String(merged.fontFamily);
+  if (merged.lineHeight !== undefined && merged.lineHeight !== "") out.lineHeight = String(merged.lineHeight);
+  if (merged.letterSpacing) out.letterSpacing = String(merged.letterSpacing);
+  if (merged.textDecoration) out.textDecoration = String(merged.textDecoration);
+  if (merged.textTransform) out.textTransform = String(merged.textTransform);
+  if (merged.whiteSpace) out.whiteSpace = String(merged.whiteSpace);
+  if (merged.fontStyle) out.fontStyle = String(merged.fontStyle);
+  if (merged.textShadow) out.textShadow = String(merged.textShadow);
+  return out;
 });
 
 function startEdit() {

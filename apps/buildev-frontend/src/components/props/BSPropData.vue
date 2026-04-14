@@ -34,23 +34,29 @@
 import { computed } from "vue";
 import { usePagesStore } from "../../store/pages";
 import type { BSBlock } from "@buildersite/sdk";
+import { DESIGN_PROP_KEYS } from "../../utils/designPropKeys";
 import BSArrayEditor from "./editors/BSArrayEditor.vue";
 import BSObjectEditor from "./editors/BSObjectEditor.vue";
 
 const props = defineProps<{ block: BSBlock }>();
 const store = usePagesStore();
 
-const handledKeys = [
-  'display', 'flexDirection', 'alignItems', 'justifyContent', 'gap', 'columns',
-  'margin', 'padding', 'width', 'height', 'src',
-  'color', 'background', 'fontSize', 'fontWeight', 'textAlign', 'border', 'borderRadius',
-  'customClasses', 'responsive'
-];
+const handledKeys = new Set<string>([
+  ...DESIGN_PROP_KEYS,
+  "columns",
+  "src",
+  "content",
+  "alt",
+  "label",
+  "href",
+  "variant",
+  "level",
+]);
 
 const dataProps = computed(() => {
   const allProps = props.block.props;
   return Object.keys(allProps)
-    .filter(k => !handledKeys.includes(k))
+    .filter((k) => !handledKeys.has(k))
     .map(key => ({
       key,
       value: allProps[key]
@@ -61,13 +67,13 @@ function formatLabel(key: string) {
   return key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 }
 
-function getType(val: any) {
+function getType(val: unknown) {
   if (Array.isArray(val)) return 'Array';
   if (val === null) return 'Null';
   return typeof val;
 }
 
-function isObject(val: any) {
+function isObject(val: unknown) {
   return val !== null && typeof val === 'object' && !Array.isArray(val);
 }
 

@@ -1,6 +1,5 @@
 <template>
   <section class="prop-section">
-    <p class="section-title">Spacing</p>
     <div class="prop-grid">
       <div class="prop-item">
         <label>Margin</label>
@@ -18,6 +17,14 @@
         <label>Width</label>
         <input type="text" :value="val('width')" @input="update('width', $event)" placeholder="ex: 100% or 300px" />
       </div>
+      <div class="prop-item">
+        <label>Max width</label>
+        <input type="text" :value="val('maxWidth')" @input="update('maxWidth', $event)" placeholder="1200px" />
+      </div>
+      <div class="prop-item">
+        <label>Min height</label>
+        <input type="text" :value="val('minHeight')" @input="update('minHeight', $event)" />
+      </div>
     </div>
   </section>
 </template>
@@ -32,19 +39,19 @@ const store = usePagesStore();
 function val(prop: string) {
   const breakpoint = store.currentBreakpoint;
   const base = props.block.props;
-  return (base.responsive as any)?.[breakpoint]?.[prop] ?? base[prop];
+  return (base.responsive as Record<string, Record<string, unknown>> | undefined)?.[breakpoint]?.[prop] ?? base[prop];
 }
 
 function update(prop: string, e: Event) {
   const target = e.target as HTMLInputElement;
   let value: string | number = target.value;
-  if (target.type === 'number') value = Number(value);
+  if (target.type === "number") value = Number(value);
 
   const breakpoint = store.currentBreakpoint;
-  if (breakpoint === 'desktop') {
+  if (breakpoint === "desktop") {
     store.updateBlock(props.block.id, { [prop]: value });
   } else {
-    const responsive = { ...(props.block.props.responsive as any) || {} };
+    const responsive = { ...(props.block.props.responsive as Record<string, Record<string, unknown>>) || {} };
     responsive[breakpoint] = { ...(responsive[breakpoint] || {}), [prop]: value };
     store.updateBlock(props.block.id, { responsive });
   }
@@ -52,8 +59,7 @@ function update(prop: string, e: Event) {
 </script>
 
 <style scoped>
-.prop-section { padding: 16px; border-bottom: 1px solid var(--border-subtle); }
-.section-title { font-size: 10px; font-weight: 800; text-transform: uppercase; margin-bottom: 12px; color: var(--text-muted); letter-spacing: 0.1em; }
+.prop-section { padding: 8px 0 0; }
 .prop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .prop-item { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
 .prop-item label { font-size: 10px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; }

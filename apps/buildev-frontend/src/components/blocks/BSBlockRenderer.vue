@@ -1,11 +1,14 @@
 <template>
   <div 
     class="canvas-block"
-    :class="{ 
-      'canvas-block--selected': !previewMode && block.id === store.selectedBlockId,
-      'canvas-block--preview': previewMode,
-      'drag-over': !previewMode && isDragOver && isContainer 
-    }"
+    :class="[
+      {
+        'canvas-block--selected': !previewMode && block.id === store.selectedBlockId,
+        'canvas-block--preview': previewMode,
+        'drag-over': !previewMode && isDragOver && isContainer,
+      },
+      customClasses,
+    ]"
     :style="wrapperStyle"
     @click.stop="onBlockClick"
     @dragover.prevent.stop="onDragOverSafe"
@@ -37,6 +40,8 @@ import BSMarginHandler from "../canvas/BSMarginHandler.vue";
 import BSPaddingHandler from "../canvas/BSPaddingHandler.vue";
 import BSBorderRadiusHandler from "../canvas/BSBorderRadiusHandler.vue";
 import BSBlockFlexLayoutHandler from "../canvas/BSBlockFlexLayoutHandler.vue";
+import { canvasWrapperStylesFromMergedProps } from "../../utils/canvasWrapperStyles";
+import { parseCustomStyleCss } from "../../utils/parseCustomStyleCss";
 import { setFont } from "../../utils/fontManager";
 
 // Recursive reference
@@ -83,43 +88,22 @@ const resolvedProps = computed(() => {
   return base;
 });
 
-const wrapperStyle = computed(() => {
-  const p = resolvedProps.value as any;
-  const style: any = {};
-  
-  if (p.width) style.width = p.width;
-  if (p.height) style.height = p.height;
-  if (p.marginTop) style.marginTop = p.marginTop;
-  if (p.marginBottom) style.marginBottom = p.marginBottom;
-  if (p.marginLeft) style.marginLeft = p.marginLeft;
-  if (p.marginRight) style.marginRight = p.marginRight;
-  if (p.paddingTop) style.paddingTop = p.paddingTop;
-  if (p.paddingBottom) style.paddingBottom = p.paddingBottom;
-  if (p.paddingLeft) style.paddingLeft = p.paddingLeft;
-  if (p.paddingRight) style.paddingRight = p.paddingRight;
-  
-  if (p.backgroundColor) style.backgroundColor = p.backgroundColor;
-  if (p.borderRadius) style.borderRadius = p.borderRadius;
-  if (p.borderWidth) style.borderWidth = p.borderWidth;
-  if (p.borderColor) style.borderColor = p.borderColor;
-  if (p.borderStyle) style.borderStyle = p.borderStyle;
-  
-  if (p.display) style.display = p.display;
-  if (p.flexDirection) style.flexDirection = p.flexDirection;
-  if (p.alignItems) style.alignItems = p.alignItems;
-  if (p.justifyContent) style.justifyContent = p.justifyContent;
-  if (p.gap) style.gap = p.gap;
-  
-  return style;
+const wrapperStyle = computed((): Record<string, string> => {
+  const p = resolvedProps.value as Record<string, unknown>;
+  const base = canvasWrapperStylesFromMergedProps(p);
+  const extra = parseCustomStyleCss(String(p.customStyleCss ?? ""));
+  return { ...base, ...extra };
 });
 
+const customClasses = computed(() => String((resolvedProps.value as Record<string, unknown>).customClasses ?? ""));
+
 // Functional component to safely handle recursion without compiler crashes
-const ChildrenRenderer = (renderProps: { block: BSBlock, slotProps: any }) => {
+const ChildrenRenderer = (renderProps: { block: BSBlock; slotProps: { column?: number } | undefined }) => {
   const { block, slotProps } = renderProps;
-  
+
   let children: BSBlock[] = [];
-  if (block.type === 'columns' && slotProps?.column !== undefined) {
-    children = block.children?.filter(c => (c.props as any).column === slotProps.column) || [];
+  if (block.type === "columns" && slotProps?.column !== undefined) {
+    children = block.children?.filter((c) => (c.props as { column?: number }).column === slotProps.column) || [];
   } else if (['section', 'container', 'form'].includes(block.type)) {
     children = block.children || [];
   }
