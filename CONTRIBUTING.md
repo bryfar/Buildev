@@ -35,7 +35,7 @@ Use the same setup above, then follow sections 3, 4, and 5.
 
 ## 2) Installation and project flow map
 
-This is the current process used in the project creation wizard, including CMS behavior inspired by EmDash.
+This is the current process used in the project creation wizard, including CMS behavior with Astro for content.
 
 ```mermaid
 flowchart TD

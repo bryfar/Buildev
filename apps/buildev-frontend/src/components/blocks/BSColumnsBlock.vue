@@ -1,12 +1,7 @@
 <template>
   <div 
     class="bs-columns" 
-    :style="{ 
-      display: 'grid',
-      gridTemplateColumns: `repeat(${block.props.columns || 2}, 1fr)`,
-      gap: (block.props.gap as any) + 'px' || '20px',
-      padding: block.props.padding || '0'
-    }"
+    :style="columnsStyle"
   >
     <div 
       v-for="i in Number(block.props.columns || 2)" 
@@ -23,11 +18,29 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import type { BSBlock } from "@buildersite/sdk";
+
 const props = defineProps<{ block: BSBlock }>();
 
+function gapCss(g: unknown): string {
+  if (g === undefined || g === null) return "20px";
+  if (typeof g === "number") return `${g}px`;
+  const s = String(g);
+  if (s.endsWith("px") || s.endsWith("rem") || s.endsWith("%")) return s;
+  if (/^\d+(\.\d+)?$/.test(s)) return `${s}px`;
+  return s || "20px";
+}
+
+const columnsStyle = computed(() => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(${props.block.props.columns || 2}, 1fr)`,
+  gap: gapCss(props.block.props.gap),
+  padding: props.block.props.padding || "0",
+}));
+
 function getColumnChildren(index: number) {
-  return props.block.children?.filter(c => c.props.column === index) || [];
+  return props.block.children?.filter((c) => (c.props as { column?: number }).column === index) || [];
 }
 </script>
 

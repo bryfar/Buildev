@@ -502,7 +502,7 @@
                     </option>
                   </select>
                   <p v-if="newProject.projectType === 'cms'" class="stack-hint">
-                    Para CMS se usa Astro como stack de contenido, siguiendo el enfoque EmDash.
+                    Para CMS se usa Astro como stack de contenido.
                   </p>
                 </div>
 

@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { usePagesStore } from "../../../store/pages";
 import { fontList, setFont } from "../../../utils/fontManager";
 
@@ -44,12 +44,19 @@ const store = usePagesStore();
 const searchQuery = ref(props.modelValue || "");
 const isOpen = ref(false);
 
-const allFonts = (fontList as any).items || [];
+watch(
+  () => props.modelValue,
+  (v) => {
+    searchQuery.value = typeof v === "string" ? v : "";
+  },
+);
+
+const allFonts = (fontList as { items?: { family: string }[] }).items ?? [];
 
 const filteredFonts = computed(() => {
   if (!searchQuery.value) return allFonts.slice(0, 100);
   return allFonts
-    .filter((f: any) => f.family.toLowerCase().includes(searchQuery.value.toLowerCase()))
+    .filter((f) => f.family.toLowerCase().includes(searchQuery.value.toLowerCase()))
     .slice(0, 100);
 });
 

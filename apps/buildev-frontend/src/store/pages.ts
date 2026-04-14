@@ -5,6 +5,7 @@ import type { BSPage, BSBlock, BSVariant } from "@buildersite/sdk";
 import { useAuthStore } from "./auth";
 import { createBlock } from "../data/blocks";
 import { ALL_COMPONENT_LIBRARY_PRESETS } from "../data/componentLibraryCatalog";
+import { cloneBlockWithNewIds } from "../utils/blockClone";
 import { resolveApiBase } from "../utils/apiBase";
 import { readActiveDesignSystemId } from "../utils/designSystemContext";
 
@@ -525,16 +526,6 @@ export const usePagesStore = defineStore("pages", () => {
       }
       draggingSymbolId.value = null;
     }
-  }
-
-  function cloneBlockWithNewIds(block: BSBlock): BSBlock {
-    const newBlock = JSON.parse(JSON.stringify(block));
-    const regenerateIds = (b: BSBlock) => {
-      b.id = uuidv4();
-      if (b.children) b.children.forEach(regenerateIds);
-    };
-    regenerateIds(newBlock);
-    return newBlock;
   }
 
   return {

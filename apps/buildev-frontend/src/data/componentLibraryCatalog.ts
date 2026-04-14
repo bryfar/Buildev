@@ -1,5 +1,5 @@
 /**
- * Catálogo unificado: plantillas base + 120 secciones (12×10) estilo librería Relume.
+ * Catálogo unificado: plantillas base + 120 secciones (12×10) por familias y variantes.
  */
 import type { ComponentLibraryPreset } from "./componentLibraryPresets";
 import { COMPONENT_LIBRARY_PRESETS } from "./componentLibraryPresets";
