@@ -2,13 +2,7 @@
   <form 
     class="bs-form" 
     @submit.prevent="handleSubmit"
-    :style="{ 
-      padding: block.props.padding || '20px', 
-      background: block.props.background || 'transparent',
-      gap: (block.props.gap as any) + 'px' || '16px',
-      display: 'flex',
-      flexDirection: 'column'
-    }"
+    :style="formStyle"
   >
     <div v-if="!block.children?.length" class="empty-placeholder">
       Form: Drop input blocks here
@@ -25,11 +19,29 @@
 </template>
 
 <script setup lang="ts">
+import { computed, inject } from "vue";
 import type { BSBlock } from "@buildersite/sdk";
-defineProps<{ block: BSBlock }>();
+import { BLOCK_PREVIEW_KEY } from "../../constants/injectionKeys";
+
+const props = defineProps<{ block: BSBlock }>();
+
+const inPreview = inject(BLOCK_PREVIEW_KEY, undefined);
+
+const formStyle = computed(() => {
+  const g = props.block.props.gap;
+  const gapCss = typeof g === "number" ? `${g}px` : typeof g === "string" && g.endsWith("px") ? g : `${g ?? 16}px`;
+  return {
+    padding: props.block.props.padding || "20px",
+    background: props.block.props.background || "transparent",
+    gap: gapCss,
+    display: "flex",
+    flexDirection: "column",
+  };
+});
 
 function handleSubmit() {
-  alert('Form submitted! (Simulation)');
+  if (inPreview?.value) return;
+  alert("Form submitted! (Simulation)");
 }
 </script>
 

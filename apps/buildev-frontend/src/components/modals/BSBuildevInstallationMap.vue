@@ -54,7 +54,7 @@
     </div>
 
     <footer class="map-footer">
-      <span>Regla CMS activa: Astro para contenido, inspirado en EmDash.</span>
+      <span>Regla CMS activa: Astro para contenido.</span>
     </footer>
   </section>
 </template>

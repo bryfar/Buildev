@@ -2,33 +2,36 @@
   <div 
     class="canvas-block"
     :class="{ 
-      'canvas-block--selected': block.id === store.selectedBlockId,
-      'drag-over': isDragOver && isContainer 
+      'canvas-block--selected': !previewMode && block.id === store.selectedBlockId,
+      'canvas-block--preview': previewMode,
+      'drag-over': !previewMode && isDragOver && isContainer 
     }"
     :style="wrapperStyle"
-    @click.stop="store.selectBlock(block.id)"
-    @dragover.prevent.stop="onDragOver"
-    @dragleave="isDragOver = false"
-    @drop.prevent.stop="onDrop"
+    @click.stop="onBlockClick"
+    @dragover.prevent.stop="onDragOverSafe"
+    @dragleave="onDragLeaveSafe"
+    @drop.prevent.stop="onDropSafe"
   >
     <component :is="resolveBlock(block.type)" :block="{ ...block, props: resolvedProps }">
       <template #default="slotProps">
         <ChildrenRenderer :block="block" :slot-props="slotProps" />
       </template>
     </component>
-    <!-- Inject Handlers if selected -->
-    <BSBoxResizer :blockId="block.id" />
-    <BSPaddingHandler :blockId="block.id" />
-    <BSMarginHandler :blockId="block.id" />
-    <BSBorderRadiusHandler :blockId="block.id" />
-    <BSBlockFlexLayoutHandler :blockId="block.id" />
+    <template v-if="!previewMode">
+      <BSBoxResizer :blockId="block.id" />
+      <BSPaddingHandler :blockId="block.id" />
+      <BSMarginHandler :blockId="block.id" />
+      <BSBorderRadiusHandler :blockId="block.id" />
+      <BSBlockFlexLayoutHandler :blockId="block.id" />
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineAsyncComponent, h, onMounted } from "vue";
+import { ref, computed, defineAsyncComponent, h, onMounted, provide } from "vue";
 import { usePagesStore } from "../../store/pages";
 import type { BSBlock } from "@buildersite/sdk";
+import { BLOCK_PREVIEW_KEY } from "../../constants/injectionKeys";
 import BSBoxResizer from "../canvas/BSBoxResizer.vue";
 import BSMarginHandler from "../canvas/BSMarginHandler.vue";
 import BSPaddingHandler from "../canvas/BSPaddingHandler.vue";
@@ -39,10 +42,23 @@ import { setFont } from "../../utils/fontManager";
 // Recursive reference
 import BSBlockRenderer from "./BSBlockRenderer.vue";
 
-const props = defineProps<{ 
-  block: BSBlock;
-  parentBlock?: BSBlock;
- }>();
+type BreakpointKey = "desktop" | "tablet" | "mobile";
+
+const props = withDefaults(
+  defineProps<{
+    block: BSBlock;
+    parentBlock?: BSBlock;
+    /** Solo lectura: sin handlers ni selección (p. ej. miniatura de librería). */
+    preview?: boolean;
+    /** Breakpoint usado al resolver props en modo preview (por defecto desktop). */
+    previewBreakpoint?: BreakpointKey;
+  }>(),
+  { preview: false, previewBreakpoint: undefined },
+);
+
+const previewMode = computed(() => props.preview === true);
+provide(BLOCK_PREVIEW_KEY, previewMode);
+
 const store = usePagesStore();
 
 onMounted(() => {
@@ -56,9 +72,11 @@ const isDragOver = ref(false);
 const isContainer = computed(() => ['section', 'container', 'columns', 'form'].includes(props.block.type));
 
 const resolvedProps = computed(() => {
-  const breakpoint = store.currentBreakpoint;
+  const breakpoint: BreakpointKey = props.preview
+    ? props.previewBreakpoint ?? "desktop"
+    : store.currentBreakpoint;
   const base = { ...props.block.props };
-  const responsive = (base.responsive as any)?.[breakpoint];
+  const responsive = (base.responsive as Record<string, Record<string, unknown>> | undefined)?.[breakpoint];
   if (responsive) {
     return { ...base, ...responsive };
   }
@@ -106,14 +124,33 @@ const ChildrenRenderer = (renderProps: { block: BSBlock, slotProps: any }) => {
     children = block.children || [];
   }
 
-  return children.map(child => h(BSBlockRenderer, { block: child, key: child.id }));
+  return children.map((child) =>
+    h(BSBlockRenderer, {
+      block: child,
+      key: child.id,
+      preview: props.preview,
+      previewBreakpoint: props.previewBreakpoint,
+    }),
+  );
 };
 
-function onDragOver() {
+function onBlockClick() {
+  if (props.preview) return;
+  store.selectBlock(props.block.id);
+}
+
+function onDragOverSafe() {
+  if (props.preview) return;
   if (isContainer.value) isDragOver.value = true;
 }
 
-function onDrop() {
+function onDragLeaveSafe() {
+  if (props.preview) return;
+  isDragOver.value = false;
+}
+
+function onDropSafe() {
+  if (props.preview) return;
   isDragOver.value = false;
   if (isContainer.value) {
     store.handleDrop(props.block.id);
@@ -158,5 +195,13 @@ function resolveBlock(type: string): any {
 .drag-over {
   background: rgba(99, 102, 241, 0.05);
   outline: 2px dashed #6366f1 !important;
+}
+.canvas-block--preview {
+  cursor: default;
+  border-color: transparent !important;
+  pointer-events: none;
+}
+.canvas-block--preview:hover {
+  outline: none !important;
 }
 </style>

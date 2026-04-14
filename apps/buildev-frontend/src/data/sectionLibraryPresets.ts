@@ -1,6 +1,5 @@
 /**
- * Catálogo tipo Relume: 12 familias de secciones × 10 variantes = 120 plantillas.
- * Inspirado en el enfoque de librería + variantes de https://www.relume.io/
+ * Catálogo de secciones por familias y variantes: 12 familias × 10 variantes = 120 plantillas.
  */
 import type { BSBlock } from "@buildersite/sdk";
 import { createBlock } from "./blocks";
@@ -443,7 +442,7 @@ const SECTION_BUILDERS: { slug: string; category: string; build: Builder }[] = [
     { slug: "footer", category: "Footer", build: buildFooter },
 ];
 
-/** 120 plantillas de sección (12 × 10), nombres tipo Relume: «Categoría / 01» … «/ 10». */
+/** 120 plantillas de sección (12 × 10), convención de nombre «Categoría / 01» … «/ 10». */
 export const SECTION_LIBRARY_PRESETS: ComponentLibraryPreset[] = SECTION_BUILDERS.flatMap(({ slug, category, build }) =>
     Array.from({ length: 10 }, (_, i) => {
         const v = i;
