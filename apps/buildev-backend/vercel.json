@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "cd ../.. && export YARN_ENABLE_IMMUTABLE_INSTALLS=0 && node ./.yarn/releases/yarn-4.13.0.cjs install",
-  "buildCommand": "cd ../.. && node ./.yarn/releases/yarn-4.13.0.cjs workspace @buildersite/backend run vercel-build"
+  "buildCommand": "cd ../.. && node ./.yarn/releases/yarn-4.13.0.cjs workspace @buildersite/backend run vercel-build",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api" }]
 }
