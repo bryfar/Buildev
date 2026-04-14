@@ -76,14 +76,18 @@ model Page {
 }
 
 model Component {
-  id           String   @id @default(uuid())
-  siteId       String
-  site         Site     @relation(fields: [siteId], references: [id])
-  name         String
-  description  String?
-  rootBlockJson String  // JSON serialized BSBlock
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(uuid())
+  siteId          String
+  site            Site     @relation(fields: [siteId], references: [id])
+  name            String
+  description     String?
+  rootBlockJson   String   // JSON serialized BSBlock
+  /// Design system del workspace (`DesignSystemLibrary.id`) o null = sin etiqueta / todos.
+  designSystemId  String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([siteId, designSystemId])
 }
 
 model Variable {

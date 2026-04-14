@@ -161,6 +161,15 @@
                 <div class="card-footer">
                    <span class="tag">Production</span>
                    <span class="timestamp">Last updated 2 days ago</span>
+                   <button
+                     type="button"
+                     class="btn-delete-project"
+                     title="Eliminar proyecto"
+                     aria-label="Eliminar proyecto"
+                     @click.stop="confirmDeleteProject(site)"
+                   >
+                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                   </button>
                 </div>
               </div>
             </div>
@@ -195,8 +204,14 @@
                 {{ page.status }}
               </div>
               <div class="page-actions">
-                <button class="btn-icon">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                <button
+                  type="button"
+                  class="btn-icon btn-delete-page"
+                  title="Eliminar página"
+                  aria-label="Eliminar página"
+                  @click.stop="confirmDeletePage(page)"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
               </div>
             </div>
@@ -216,7 +231,7 @@
               <div v-for="symbol in symbolCards" :key="symbol.id" class="cms-list-item plugin-item">
                 <div class="plugin-meta">
                   <strong>{{ symbol.name }}</strong>
-                  <span>{{ symbol.rootType }} · {{ symbol.description }}</span>
+                  <span>{{ symbol.rootType }} · {{ symbol.description }} · {{ symbol.designLabel }}</span>
                 </div>
                 <button type="button" class="btn-plugin" @click="deleteSymbol(symbol.id)">Delete</button>
               </div>
@@ -968,6 +983,16 @@ async function deleteSymbol(componentId: string) {
   await store.deleteComponent(componentId);
 }
 
+function confirmDeletePage(page: { id: string; name: string }) {
+  if (!confirm(`¿Eliminar la página «${page.name}»?`)) return;
+  void store.deletePage(page.id);
+}
+
+function confirmDeleteProject(site: { id: string; name: string }) {
+  if (!confirm(`¿Eliminar el proyecto «${site.name}» y todos sus datos? Esta acción no se puede deshacer.`)) return;
+  void store.deleteSite(site.id);
+}
+
 async function openSymbolEditor() {
   if (!store.currentSiteId) return;
   if (!store.pages.length) {
@@ -1049,7 +1074,16 @@ const designSystemComponents = computed(() => {
 });
 
 const symbolCards = computed(() =>
-  (store.components as Array<{ id: string; name: string; description?: string; rootBlockJson: string; updatedAt?: string }>).map((component) => {
+  (
+    store.components as Array<{
+      id: string;
+      name: string;
+      description?: string;
+      rootBlockJson: string;
+      updatedAt?: string;
+      designSystemId?: string | null;
+    }>
+  ).map((component) => {
     let rootType = "component";
     try {
       const parsed = JSON.parse(component.rootBlockJson) as { type?: string };
@@ -1057,12 +1091,17 @@ const symbolCards = computed(() =>
     } catch {
       rootType = "component";
     }
+    const designLabel =
+      typeof component.designSystemId === "string" && component.designSystemId.length > 0
+        ? `DS ${component.designSystemId.slice(0, 8)}…`
+        : "sin design system";
     return {
       id: component.id,
       name: component.name,
       description: component.description || "Reusable block component",
       rootType,
       updatedAt: component.updatedAt || "",
+      designLabel,
     };
   })
 );
@@ -1391,9 +1430,22 @@ watch(
 .card-body { padding: 20px; }
 .card-title { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
 .card-url { font-size: 12px; color: var(--text-muted); }
-.card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
+.card-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-subtle); }
 .tag { font-size: 10px; font-weight: 800; background: var(--bg-main); color: var(--text-muted); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-main); }
-.timestamp { font-size: 11px; color: var(--text-dim); }
+.timestamp { font-size: 11px; color: var(--text-dim); flex: 1; min-width: 0; }
+.btn-delete-project {
+  margin-left: auto;
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+}
+.btn-delete-project:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
 /* PAGES LIST */
 .pages-grid { display: flex; flex-direction: column; gap: 12px; }
@@ -1407,6 +1459,9 @@ watch(
 .dot-badge { width: 8px; height: 8px; border-radius: 50%; }
 .dot-badge.published { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
 .dot-badge.draft { background: #6b7280; }
+.page-actions { display: flex; align-items: center; gap: 8px; }
+.btn-delete-page { background: transparent; border: none; cursor: pointer; color: var(--text-dim); padding: 6px; border-radius: 8px; display: flex; }
+.btn-delete-page:hover { color: #ef4444; background: rgba(239, 68, 68, 0.08); }
 
 /* MODALS */
 .premium-card { background: var(--bg-surface); border: 1px solid var(--border-main); box-shadow: 0 20px 50px rgba(0,0,0,0.2); border-radius: 24px; }

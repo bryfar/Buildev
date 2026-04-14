@@ -4,7 +4,9 @@ import { v4 as uuidv4 } from "uuid";
 import type { BSPage, BSBlock, BSVariant } from "@buildersite/sdk";
 import { useAuthStore } from "./auth";
 import { createBlock } from "../data/blocks";
+import { ALL_COMPONENT_LIBRARY_PRESETS } from "../data/componentLibraryCatalog";
 import { resolveApiBase } from "../utils/apiBase";
+import { readActiveDesignSystemId } from "../utils/designSystemContext";
 
 const API = resolveApiBase(import.meta.env.VITE_API_URL);
 
@@ -23,6 +25,8 @@ export const usePagesStore = defineStore("pages", () => {
   const isLoading = ref(false);
   const draggingBlockType = ref<string | null>(null);
   const draggingSymbolId = ref<string | null>(null);
+  /** Id de `COMPONENT_LIBRARY_PRESETS` al arrastrar desde el catálogo. */
+  const draggingCatalogPresetId = ref<string | null>(null);
   const currentBreakpoint = ref<'desktop' | 'tablet' | 'mobile'>('desktop');
   const components = ref<any[]>([]);
   const assets = ref<any[]>([]);
@@ -338,7 +342,7 @@ export const usePagesStore = defineStore("pages", () => {
     isLoading.value = true;
     const res = await fetch(`${API}/api/pages/${id}`, {
       method: "DELETE",
-      headers: auth.authHeaders(),
+      headers: getCommonHeaders(),
     });
     const json = await res.json();
     if (json.ok) {
@@ -376,23 +380,101 @@ export const usePagesStore = defineStore("pages", () => {
   }
 
   async function loadComponents() {
-    const res = await fetch(`${API}/api/components`, { headers: auth.authHeaders() });
+    const res = await fetch(`${API}/api/components`, { headers: getCommonHeaders() });
     const json = await res.json();
     if (json.ok) components.value = json.data;
   }
 
-  async function saveAsComponent(name: string, block: BSBlock) {
+  async function saveAsComponent(
+    name: string,
+    block: BSBlock,
+    options?: { designSystemId?: string | null },
+  ) {
     isLoading.value = true;
+    let designSystemId: string | null;
+    if (options?.designSystemId !== undefined) {
+      const v = options.designSystemId;
+      designSystemId = typeof v === "string" && v.length > 0 ? v : null;
+    } else {
+      const r = readActiveDesignSystemId(currentSiteId.value);
+      designSystemId = r.length > 0 ? r : null;
+    }
     const res = await fetch(`${API}/api/components`, {
       method: "POST",
-      headers: auth.authHeaders(),
-      body: JSON.stringify({ name, rootBlock: block }),
+      headers: { ...getCommonHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        rootBlock: block,
+        designSystemId,
+      }),
     });
     const json = await res.json();
     if (json.ok) {
       components.value.unshift(json.data);
     }
     isLoading.value = false;
+  }
+
+  async function importPresetToLibrary(presetId: string) {
+    const preset = ALL_COMPONENT_LIBRARY_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    const r = readActiveDesignSystemId(currentSiteId.value);
+    await saveAsComponent(preset.name, preset.rootBlock, {
+      designSystemId: r.length > 0 ? r : null,
+    });
+  }
+
+  async function updateComponent(
+    id: string,
+    patch: { name?: string; description?: string | null; designSystemId?: string | null },
+  ) {
+    isLoading.value = true;
+    try {
+      const res = await fetch(`${API}/api/components/${id}`, {
+        method: "PATCH",
+        headers: { ...getCommonHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        const idx = components.value.findIndex((c: { id: string }) => c.id === id);
+        if (idx !== -1) components.value[idx] = json.data;
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  async function deleteSite(siteId: string) {
+    isLoading.value = true;
+    try {
+      const res = await fetch(`${API}/api/sites/${siteId}`, {
+        method: "DELETE",
+        headers: auth.authHeaders(),
+      });
+      const json = await res.json();
+      if (json.ok) {
+        sites.value = sites.value.filter((s: { id: string }) => s.id !== siteId);
+        if (currentSiteId.value === siteId) {
+          const next = sites.value[0]?.id ?? null;
+          currentSiteId.value = next;
+          if (next) {
+            localStorage.setItem("buildersite_site_id", next);
+          } else {
+            localStorage.removeItem("buildersite_site_id");
+          }
+        }
+        if (currentSiteId.value) {
+          await loadPages();
+          await loadComponents();
+        } else {
+          pages.value = [];
+          components.value = [];
+        }
+      }
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   async function deleteComponent(id: string) {
@@ -423,10 +505,20 @@ export const usePagesStore = defineStore("pages", () => {
       addBlock(block, parentId);
       selectBlock(block.id);
       draggingBlockType.value = null;
+    } else if (draggingCatalogPresetId.value) {
+      const preset = ALL_COMPONENT_LIBRARY_PRESETS.find((p) => p.id === draggingCatalogPresetId.value);
+      if (preset) {
+        const clonedBlock = cloneBlockWithNewIds(JSON.parse(JSON.stringify(preset.rootBlock)) as BSBlock);
+        addBlock(clonedBlock, parentId);
+        selectBlock(clonedBlock.id);
+      }
+      draggingCatalogPresetId.value = null;
     } else if (draggingSymbolId.value) {
-      const symbol = components.value.find((c: any) => c.id === draggingSymbolId.value);
+      const symbol = components.value.find(
+        (c: { id: string; rootBlockJson: string }) => c.id === draggingSymbolId.value,
+      );
       if (symbol) {
-        const block = JSON.parse(symbol.rootBlockJson);
+        const block = JSON.parse(symbol.rootBlockJson) as BSBlock;
         const clonedBlock = cloneBlockWithNewIds(block);
         addBlock(clonedBlock, parentId);
         selectBlock(clonedBlock.id);
@@ -449,9 +541,31 @@ export const usePagesStore = defineStore("pages", () => {
     pages, currentPage, selectedBlockId, isLoading, historyIndex, historyList: history,
     loadPages, loadPage, createPage, savePage, publishPage,
     addBlock, updateBlock, removeBlock, moveBlock, nudgeBlock, duplicateBlock, selectBlock, getSelectedBlock,
-    undo, redo, draggingBlockType, draggingSymbolId, handleDrop, deletePage, duplicatePage, updatePage,
-    currentBreakpoint, components, assets, loadComponents, saveAsComponent, deleteComponent, loadAssets,
-    sites, currentSiteId, loadSites, createSite, selectSite, getCommonHeaders
+    undo,
+    redo,
+    draggingBlockType,
+    draggingSymbolId,
+    draggingCatalogPresetId,
+    handleDrop,
+    deletePage,
+    duplicatePage,
+    updatePage,
+    currentBreakpoint,
+    components,
+    assets,
+    loadComponents,
+    saveAsComponent,
+    importPresetToLibrary,
+    updateComponent,
+    deleteComponent,
+    loadAssets,
+    sites,
+    currentSiteId,
+    loadSites,
+    createSite,
+    selectSite,
+    deleteSite,
+    getCommonHeaders,
   };
 });
 
