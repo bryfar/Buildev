@@ -96,6 +96,20 @@
     background: rgba(0, 0, 0, 0.06);
     word-break: break-all;
 }
+.deploy-config-steps {
+    margin: 12px 0 0;
+    padding-left: 1.25rem;
+    font-size: 13px;
+    line-height: 1.55;
+}
+.deploy-config-steps li {
+    margin-bottom: 8px;
+}
+.deploy-config-steps a {
+    color: #991b1b;
+    font-weight: 600;
+    text-decoration: underline;
+}
 h1 {
     margin: 0 0 8px;
     font-size: 28px;

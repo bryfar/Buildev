@@ -10,11 +10,18 @@
         <div v-if="showProdApiMissingBanner" class="deploy-config-banner" role="alert">
           <strong>Falta la URL del API en el build</strong>
           <p>
-            Este sitio está llamando a <code>/api</code> en el mismo dominio, pero en Vercel aquí solo está el editor: no
-            existe un backend en esa ruta. En el <strong>proyecto del front</strong> en Vercel: Settings → Environment
-            Variables → añade <code>VITE_API_URL</code> con la URL pública de tu API (sin barra final), por ejemplo
-            <code>https://tu-api.vercel.app</code>, y vuelve a desplegar.
+            No se configura editando un archivo en Git: hay que definir la variable en
+            <strong>Vercel</strong> (proyecto del <em>frontend</em>), luego generar un deploy nuevo.
           </p>
+          <ol class="deploy-config-steps">
+            <li>Abre <a href="https://vercel.com/dashboard" rel="noopener noreferrer" target="_blank">vercel.com/dashboard</a> y entra en el proyecto que despliega el editor.</li>
+            <li><strong>Settings</strong> → <strong>Environment Variables</strong>.</li>
+            <li>
+              Nombre: <code>VITE_API_URL</code> · Valor: la URL pública de tu backend (sin <code>/</code> final), p. ej.
+              <code>https://tu-api.vercel.app</code> · Marca Production (y Preview si quieres previews con API).
+            </li>
+            <li><strong>Deployments</strong> → los tres puntos del último deploy → <strong>Redeploy</strong> (así Vite inyecta la variable en el bundle).</li>
+          </ol>
         </div>
 
         <h1>{{ isRegister ? "Crear cuenta" : "Iniciar sesión" }}</h1>
