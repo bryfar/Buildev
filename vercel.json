@@ -3,5 +3,5 @@
   "installCommand": "export YARN_ENABLE_IMMUTABLE_INSTALLS=0 && node ./.yarn/releases/yarn-4.13.0.cjs install",
   "buildCommand": "node ./.yarn/releases/yarn-4.13.0.cjs workspace @buildersite/frontend run build",
   "outputDirectory": "apps/buildev-frontend/dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }]
 }

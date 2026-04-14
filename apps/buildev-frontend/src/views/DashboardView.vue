@@ -404,12 +404,18 @@
               </div>
 
               <!-- AI Flow -->
-              <BSAIChatWizard
-                v-else-if="selectedMode === 'ai' && creationStep === 2"
-                :key="aiWizardKey"
-                @complete="handleAIComplete"
-                @cancel="creationStep = 1"
-              />
+              <div v-else-if="selectedMode === 'ai' && creationStep === 2" class="ai-step-shell">
+                <div class="ai-step-toolbar">
+                  <button type="button" class="btn-cancel ai-back-btn" @click="returnToModeSelection">
+                    ← Cambiar modo
+                  </button>
+                </div>
+                <BSAIChatWizard
+                  :key="aiWizardKey"
+                  @complete="handleAIComplete"
+                  @cancel="returnToModeSelection"
+                />
+              </div>
 
               <!-- Figma/Normal/Reverse Details -->
               <div v-else-if="creationStep === 2" class="details-entry">
@@ -1161,6 +1167,11 @@ function closeModals() {
   isSaving.value = false;
 }
 
+function returnToModeSelection() {
+  creationStep.value = 1;
+  aiWizardKey.value += 1;
+}
+
 async function handleSelectSite(id: string) {
   await store.selectSite(id);
   const selectedSite = store.sites.find((site: { id: string; projectType?: string }) => site.id === id);
@@ -1781,8 +1792,41 @@ watch(
 .bounce-in { animation: bounceIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
 @keyframes bounceIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 /* AI ARCHITECT MODAL ADJUSTMENT */
-.modal-ai-architect { background: transparent !important; border: none !important; box-shadow: none !important; max-width: 640px !important; }
-.modal-ai-architect .modal-header, .modal-ai-architect .modal-footer { display: none; }
-.modal-ai-architect .modal-body { padding: 0; }
+.modal-ai-architect {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  max-width: 640px !important;
+}
+/* Mantiene limpio el look del wizard, pero deja visible el footer para "Back to modes". */
+.modal-ai-architect .modal-header {
+  display: none;
+}
+.modal-ai-architect .modal-footer {
+  display: flex;
+  padding: 14px 0 0;
+  background: transparent;
+  border-top: none;
+}
+.modal-ai-architect .modal-body {
+  padding: 0;
+}
+.ai-step-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ai-step-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+.ai-back-btn {
+  border: 1px solid var(--border-main);
+  background: var(--bg-surface-alt);
+  color: var(--text-main);
+}
+.ai-back-btn:hover {
+  background: var(--bg-main);
+}
 
 </style>

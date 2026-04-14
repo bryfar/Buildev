@@ -196,6 +196,19 @@ function describeApiFetchTarget(apiBase: string): string {
   return apiBase;
 }
 
+/**
+ * Extrae un fragmento legible de un cuerpo que no es JSON (p. ej. HTML de error de Express).
+ *
+ * @param raw Cuerpo de respuesta en texto
+ * @param max Longitud máxima aproximada
+ * @returns Fragmento recortado
+ */
+function truncateNonJsonBodyHint(raw: string, max = 220): string {
+  const stripped = raw.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const t = stripped.slice(0, max);
+  return stripped.length > max ? `${t}…` : t;
+}
+
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -217,10 +230,13 @@ onMounted(async () => {
   document.body.classList.add(LOGIN_HTML_CLASS);
   oauthFetchError.value = null;
   oauthHints.value = { github: null, google: null };
+  const endpoint = `${API}/api/auth/oauth/login-ready`;
   try {
-    const res = await fetch(`${API}/api/auth/oauth/login-ready`);
+    const res = await fetch(endpoint);
+    const rawBody = await res.text();
     let json: {
       ok?: boolean;
+      error?: string;
       data?: {
         github?: boolean;
         google?: boolean;
@@ -228,14 +244,18 @@ onMounted(async () => {
       };
     };
     try {
-      json = (await res.json()) as typeof json;
+      json = JSON.parse(rawBody) as typeof json;
     } catch {
-      oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(API)}. ¿Estás en Vite dev y el backend en marcha?`;
+      const hint = truncateNonJsonBodyHint(rawBody);
+      oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(API)}.${hint ? ` Vista previa: «${hint}».` : ""} Comprueba que el proceso en ese puerto sea este backend (p. ej. GET /api/health debe devolver JSON) y que no haya otro servicio usando el mismo puerto.`;
       oauthReady.value = { github: false, google: false };
       return;
     }
     if (!res.ok) {
-      oauthFetchError.value = `El API respondió ${res.status}. Destino: ${describeApiFetchTarget(API)}. Arranca el backend y revisa puerto/proxy.`;
+      const apiErr = typeof json.error === "string" && json.error.trim() !== "" ? json.error.trim() : null;
+      oauthFetchError.value = apiErr
+        ? `El API respondió ${res.status}: ${apiErr}. Destino: ${describeApiFetchTarget(API)}.`
+        : `El API respondió ${res.status}. Destino: ${describeApiFetchTarget(API)}. Arranca el backend y revisa puerto/proxy.`;
       oauthReady.value = { github: false, google: false };
       return;
     }
