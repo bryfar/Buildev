@@ -7,6 +7,16 @@
           <span>Buildev</span>
         </div>
 
+        <div v-if="showProdApiMissingBanner" class="deploy-config-banner" role="alert">
+          <strong>Falta la URL del API en el build</strong>
+          <p>
+            Este sitio está llamando a <code>/api</code> en el mismo dominio, pero en Vercel aquí solo está el editor: no
+            existe un backend en esa ruta. En el <strong>proyecto del front</strong> en Vercel: Settings → Environment
+            Variables → añade <code>VITE_API_URL</code> con la URL pública de tu API (sin barra final), por ejemplo
+            <code>https://tu-api.vercel.app</code>, y vuelve a desplegar.
+          </p>
+        </div>
+
         <h1>{{ isRegister ? "Crear cuenta" : "Iniciar sesión" }}</h1>
         <p class="sub">
           {{
@@ -175,12 +185,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth";
 import { resolveApiBase } from "../utils/apiBase";
 
 const API = resolveApiBase(import.meta.env.VITE_API_URL);
+
+/** En producción, el build debe incluir la URL del API; si no, las peticiones a /api van al dominio del SPA (Vercel 404). */
+const showProdApiMissingBanner = computed(() => {
+  if (!import.meta.env.PROD) {
+    return false;
+  }
+  const raw = import.meta.env.VITE_API_URL;
+  return typeof raw !== "string" || raw.trim() === "";
+});
 
 /**
  * Texto breve para mensajes de error de red (login / OAuth ready).
@@ -247,7 +266,22 @@ onMounted(async () => {
       json = JSON.parse(rawBody) as typeof json;
     } catch {
       const hint = truncateNonJsonBodyHint(rawBody);
-      oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(API)}.${hint ? ` Vista previa: «${hint}».` : ""} Comprueba que el proceso en ese puerto sea este backend (p. ej. GET /api/health debe devolver JSON) y que no haya otro servicio usando el mismo puerto.`;
+      const looksLikeVercel404 =
+        import.meta.env.PROD &&
+        API === "" &&
+        (res.status === 404 ||
+          /\bNOT_FOUND\b/i.test(rawBody) ||
+          /page could not be found/i.test(rawBody));
+      if (looksLikeVercel404) {
+        oauthFetchError.value =
+          "No hay API en este dominio: falta VITE_API_URL en el proyecto del front en Vercel (URL del backend, sin / al final) y un nuevo deploy. El 404 «NOT_FOUND» es la página de Vercel, no tu servidor.";
+      } else {
+        const portHint =
+          import.meta.env.PROD && API === ""
+            ? " Si acabas de configurar VITE_API_URL, genera un nuevo deploy del front."
+            : " Comprueba que el proceso en ese puerto sea este backend (p. ej. GET /api/health debe devolver JSON) y que no haya otro servicio usando el mismo puerto.";
+        oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(API)}.${hint ? ` Vista previa: «${hint}».` : ""}${portHint}`;
+      }
       oauthReady.value = { github: false, google: false };
       return;
     }
@@ -275,12 +309,13 @@ onMounted(async () => {
   } catch (e: unknown) {
     const reason = e instanceof Error ? e.message : "Error desconocido";
     const dest = describeApiFetchTarget(API);
-    const devExtra =
-      import.meta.env.DEV && API !== ""
+    const devExtra = import.meta.env.DEV
+      ? API !== ""
         ? " Quita VITE_API_URL del .env del frontend (así se usa el proxy /api) o arranca el backend en esa URL exacta."
-        : import.meta.env.DEV
-          ? " Desde la raíz del monorepo ejecuta «yarn dev» (levanta API + editor) o en otra terminal «yarn dev:backend»."
-          : " Revisa VITE_API_URL y que el backend sea accesible desde el navegador.";
+        : " Desde la raíz del monorepo ejecuta «yarn dev» (levanta API + editor) o en otra terminal «yarn dev:backend»."
+      : API === ""
+        ? " En Vercel, define VITE_API_URL en el proyecto del front con la URL pública del backend y redespliega."
+        : " Revisa VITE_API_URL y que el backend sea accesible desde el navegador (CORS, HTTPS).";
     oauthFetchError.value = `No se pudo contactar al API (${reason}). Destino: ${dest}.${devExtra}`;
     oauthReady.value = { github: false, google: false };
   }
