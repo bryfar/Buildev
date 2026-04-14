@@ -71,6 +71,31 @@
     letter-spacing: -0.02em;
     color: #18181b;
 }
+.deploy-config-banner {
+    margin: 0 0 24px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    color: #7f1d1d;
+    font-size: 13px;
+    line-height: 1.5;
+}
+.deploy-config-banner strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+.deploy-config-banner p {
+    margin: 0;
+}
+.deploy-config-banner code {
+    font-size: 12px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.06);
+    word-break: break-all;
+}
 h1 {
     margin: 0 0 8px;
     font-size: 28px;
