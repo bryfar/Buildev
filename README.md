@@ -95,9 +95,11 @@ If you are new, read in this order:
 
 - **✨ AI Vision Scanner**: Drop a screenshot and convert it into editable `BuildevNode` AST nodes instantly.
 - **🏗️ Multi-Framework Codegen**: Generate high-fidelity code for **React**, **Vue 3**, or plain **HTML/CSS**.
+- **🔁 Code Mode Autosync**: Edit `src/blocks.json` or `src/App.vue` in Code Mode and sync changes back to the visual builder automatically.
 - **🧩 Project-Type Dashboard**: Each project opens dashboard mode by type (`landing`, `multisite`, `cms`).
 - **📰 CMS Sidebar Navigation**: CMS projects include grouped navigation for Content, Manage, and Admin sections.
 - **🎨 Reusable Design Systems**: Create a design system once, reuse it across projects, and preview components before publishing.
+- **🧱 Component Presets Library**: Includes ready-to-use section families plus `Navbar` variants for fast page composition.
 - **🔌 Marketing and CRM Plugins**: Install integrations for Google marketing apps and CRM platforms per project.
 - **📡 Developer Sync**: Native GitHub integration. Sync your design directly as code in your favorite repository.
 - **🤖 Agent-First Architecture**: Built for humans and AIs. Includes `.claude/`, `.opencode/`, and standardized `skills/` for AI agents.

@@ -14,6 +14,12 @@
       </div>
 
       <div class="navbar-right">
+        <div class="mode-toggles ai-header-modes">
+          <button class="btn-toggle-v2" @click="setManualMode">Design</button>
+          <button class="btn-toggle-v2 pink active" @click="setAIMode">AI Architect</button>
+          <button class="btn-toggle-v2" @click="toggleCodeMode">Code</button>
+        </div>
+        <div class="logo-sep"></div>
         <button class="btn-ghost-v2" @click="remixProject">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
           Remix
@@ -249,7 +255,7 @@
             <BSCodeEditor
               v-model="editorBuffer"
               :language="activeIdeTab.language"
-              :read-only="activeIdeTab.kind === 'readonly'"
+              :read-only="false"
               :theme="ui.theme === 'dark' ? 'vs-dark' : 'light'"
               @cursor-change="onEditorCursor"
             />
@@ -330,6 +336,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import type { BSBlock } from "@buildersite/sdk";
 import { usePagesStore } from "../store/pages";
 import { useUIStore } from "../store/ui";
 import BSBlockRenderer from "../components/blocks/BSBlockRenderer.vue";
@@ -348,6 +355,8 @@ import BSAIConversationOverlay from "../components/editor/BSAIConversationOverla
 import { useAuthStore } from "../store/auth";
 import { gitService, GITHUB_PAT_STORAGE_KEY } from "../services/gitService";
 import { deployService, VERCEL_TOKEN_STORAGE_KEY } from "../services/deployService";
+import { exportService, type ProjectFile } from "../services/exportService";
+import { parseVueSfcToBlocks } from "../utils/codeAutosync";
 
 
 import { exportToHTML } from "../utils/exporter";
@@ -483,21 +492,25 @@ const zoomLabel = computed(() => zoom.value);
 // --- Code Mode / IDE ---
 const BLOCKS_TAB_ID = 'file-blocks';
 const BLOCKS_FILE_PATH = 'src/blocks.json';
+const APP_VUE_FILE_PATH = "src/App.vue";
 
 interface IdeTab {
   id: string;
   label: string;
   path: string;
   language: string;
-  kind: 'blocks' | 'readonly';
+  kind: 'blocks' | 'generated';
 }
 
 const ideTabs = ref<IdeTab[]>([
   { id: BLOCKS_TAB_ID, label: 'blocks.json', path: BLOCKS_FILE_PATH, language: 'json', kind: 'blocks' }
 ]);
 const activeIdeTabId = ref(BLOCKS_TAB_ID);
-const readonlyBuffers = ref<Record<string, string>>({});
+const codeFileContent = ref<Record<string, string>>({});
+const dirtyCodePaths = ref<string[]>([]);
 const ideCursor = ref({ line: 1, column: 1 });
+const isCodeAutosyncEnabled = ref(true);
+let codeAutosyncTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const activeIdeTab = computed(
   () => ideTabs.value.find(t => t.id === activeIdeTabId.value) ?? ideTabs.value[0]!
@@ -524,8 +537,83 @@ const statusBarLanguage = computed(() => {
   return map[lang] ?? (lang.slice(0, 1).toUpperCase() + lang.slice(1));
 });
 
-function placeholderForFile(path: string, name: string) {
-  return `/* ${path} */\n// Read-only preview. Page structure is edited in blocks.json or on the canvas.\n`;
+function collectFiles(files: ProjectFile[], parentPath = "", out: Record<string, string> = {}) {
+  for (const file of files) {
+    const path = parentPath.length > 0 ? `${parentPath}/${file.name}` : file.name;
+    if (file.type === "file") {
+      out[path] = file.content ?? "";
+      continue;
+    }
+    if (file.children?.length) {
+      collectFiles(file.children, path, out);
+    }
+  }
+  return out;
+}
+
+function isDirtyPath(path: string): boolean {
+  return dirtyCodePaths.value.includes(path);
+}
+
+function markPathAsDirty(path: string) {
+  if (isDirtyPath(path)) return;
+  dirtyCodePaths.value = [...dirtyCodePaths.value, path];
+}
+
+function syncGeneratedCodeFromPage() {
+  if (!store.currentPage) return;
+  const generated = collectFiles(exportService.generateProjectExplorer(store.currentPage));
+  generated[BLOCKS_FILE_PATH] = JSON.stringify(store.currentPage.blocks, null, 2);
+  const nextContent: Record<string, string> = { ...codeFileContent.value };
+  for (const [path, content] of Object.entries(generated)) {
+    if (path !== BLOCKS_FILE_PATH && isDirtyPath(path)) continue;
+    nextContent[path] = content;
+  }
+  codeFileContent.value = nextContent;
+}
+
+function isBlockArray(value: unknown): value is BSBlock[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    const candidate = entry as Record<string, unknown>;
+    return typeof candidate.id === "string" && typeof candidate.type === "string" && typeof candidate.props === "object";
+  });
+}
+
+function applyBlocksFromCode(blocks: unknown) {
+  if (!store.currentPage || !isBlockArray(blocks)) return;
+  isUpdatingFromCode = true;
+  store.currentPage.blocks = blocks;
+  setTimeout(() => {
+    isUpdatingFromCode = false;
+  }, 0);
+}
+
+function scheduleCodeAutosync(path: string) {
+  if (!isCodeMode.value || !isCodeAutosyncEnabled.value) return;
+  if (path !== BLOCKS_FILE_PATH && path !== APP_VUE_FILE_PATH) return;
+  if (codeAutosyncTimeout) clearTimeout(codeAutosyncTimeout);
+  codeAutosyncTimeout = setTimeout(() => {
+    if (!store.currentPage) return;
+    const content = codeFileContent.value[path] ?? "";
+
+    if (path === BLOCKS_FILE_PATH) {
+      try {
+        const parsed = JSON.parse(content);
+        applyBlocksFromCode(parsed);
+      } catch {
+        // Ignora JSON parcial mientras el usuario edita.
+      }
+      return;
+    }
+
+    if (path === APP_VUE_FILE_PATH) {
+      const parsed = parseVueSfcToBlocks(content);
+      if (!parsed.ok) return;
+      applyBlocksFromCode(parsed.blocks);
+    }
+  }, 420);
 }
 
 function onExplorerOpenFile(payload: { path: string; name: string; language: string }) {
@@ -551,10 +639,10 @@ function onExplorerOpenFile(payload: { path: string; name: string; language: str
     label: payload.name,
     path: payload.path,
     language: payload.language,
-    kind: 'readonly'
+    kind: 'generated'
   });
-  if (!readonlyBuffers.value[payload.path]) {
-    readonlyBuffers.value[payload.path] = placeholderForFile(payload.path, payload.name);
+  if (!codeFileContent.value[payload.path]) {
+    syncGeneratedCodeFromPage();
   }
   activeIdeTabId.value = id;
 }
@@ -584,19 +672,24 @@ let isUpdatingFromCode = false;
 const editorBuffer = computed({
   get() {
     const tab = activeIdeTab.value;
-    if (tab.kind === 'blocks') return codeContent.value;
-    return readonlyBuffers.value[tab.path] ?? placeholderForFile(tab.path, tab.label);
+    return codeFileContent.value[tab.path] ?? "";
   },
   set(v: string) {
     const tab = activeIdeTab.value;
-    if (tab.kind === 'blocks') codeContent.value = v;
-    else readonlyBuffers.value[tab.path] = v;
+    codeFileContent.value = { ...codeFileContent.value, [tab.path]: v };
+    scheduleCodeAutosync(tab.path);
+    if (tab.kind === "generated") {
+      markPathAsDirty(tab.path);
+      return;
+    }
+    codeContent.value = v;
   }
 });
 
 function setManualMode() {
   isCodeMode.value = false;
   isAIBuilding.value = false;
+  isAIComposeOpen.value = false;
 }
 
 function setAIMode() {
@@ -609,20 +702,25 @@ function toggleCodeMode() {
   isCodeMode.value = !isCodeMode.value;
   if (isCodeMode.value) {
     isAIBuilding.value = false;
-    if (store.currentPage) {
-      codeContent.value = JSON.stringify(store.currentPage.blocks, null, 2);
-    }
+    isAIComposeOpen.value = false;
+    syncGeneratedCodeFromPage();
+    codeContent.value = codeFileContent.value[BLOCKS_FILE_PATH] ?? "";
   }
 }
 
 watch(() => store.currentPage?.blocks, (newBlocks) => {
-  if (isCodeMode.value && !isUpdatingFromCode) {
-    codeContent.value = JSON.stringify(newBlocks, null, 2);
+  if (!store.currentPage) return;
+  if (!isUpdatingFromCode) {
+    codeContent.value = JSON.stringify(newBlocks ?? [], null, 2);
+    codeFileContent.value = { ...codeFileContent.value, [BLOCKS_FILE_PATH]: codeContent.value };
   }
+  syncGeneratedCodeFromPage();
 }, { deep: true });
 
 watch(codeContent, (newVal) => {
-  if (!isCodeMode.value || !store.currentPage) return;
+  if (!store.currentPage) return;
+  codeFileContent.value = { ...codeFileContent.value, [BLOCKS_FILE_PATH]: newVal };
+  if (!isCodeMode.value) return;
   if (activeIdeTabId.value !== BLOCKS_TAB_ID) return;
   try {
     const parsed = JSON.parse(newVal);
@@ -642,7 +740,10 @@ watch(
       { id: BLOCKS_TAB_ID, label: 'blocks.json', path: BLOCKS_FILE_PATH, language: 'json', kind: 'blocks' }
     ];
     activeIdeTabId.value = BLOCKS_TAB_ID;
-    readonlyBuffers.value = {};
+    codeFileContent.value = {};
+    dirtyCodePaths.value = [];
+    syncGeneratedCodeFromPage();
+    codeContent.value = codeFileContent.value[BLOCKS_FILE_PATH] ?? "";
     ideCursor.value = { line: 1, column: 1 };
   }
 );
@@ -811,6 +912,10 @@ onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown, true);
   window.removeEventListener('keyup', handleKeyUp, true);
   clearGitPoll();
+  if (codeAutosyncTimeout) {
+    clearTimeout(codeAutosyncTimeout);
+    codeAutosyncTimeout = null;
+  }
 });
 
 watch(
@@ -1090,6 +1195,11 @@ watch(() => store.currentPage?.blocks, () => {
   border: none; 
   gap: 4px;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+.ai-header-modes {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: none;
 }
 .btn-toggle-v2 {
   padding: 6px 12px;
