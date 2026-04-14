@@ -6,10 +6,8 @@ import { useAuthStore } from "./auth";
 import { createBlock } from "../data/blocks";
 import { ALL_COMPONENT_LIBRARY_PRESETS } from "../data/componentLibraryCatalog";
 import { cloneBlockWithNewIds } from "../utils/blockClone";
-import { resolveApiBase } from "../utils/apiBase";
+import { apiBase } from "../utils/apiBase";
 import { readActiveDesignSystemId } from "../utils/designSystemContext";
-
-const API = resolveApiBase(import.meta.env.VITE_API_URL);
 
 interface ExtendedPage extends BSPage {
   prompt?: string;
@@ -94,7 +92,7 @@ export const usePagesStore = defineStore("pages", () => {
     if (!currentSiteId.value) return;
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/pages`, { headers: getCommonHeaders() });
+      const res = await fetch(`${apiBase}/api/pages`, { headers: getCommonHeaders() });
       const json = await res.json();
       if (json.ok) {
         pages.value = json.data;
@@ -111,7 +109,7 @@ export const usePagesStore = defineStore("pages", () => {
   async function loadSites() {
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/sites`, { headers: auth.authHeaders() });
+      const res = await fetch(`${apiBase}/api/sites`, { headers: auth.authHeaders() });
       const json = await res.json();
       if (json.ok) {
         sites.value = json.data;
@@ -126,7 +124,7 @@ export const usePagesStore = defineStore("pages", () => {
 
   async function createSite(name: string, options: Record<string, unknown> = {}) {
     try {
-      const res = await fetch(`${API}/api/sites`, {
+      const res = await fetch(`${apiBase}/api/sites`, {
         method: "POST",
         headers: { ...auth.authHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -177,7 +175,7 @@ export const usePagesStore = defineStore("pages", () => {
   async function loadPage(id: string) {
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/pages/${id}`, { headers: getCommonHeaders() });
+      const res = await fetch(`${apiBase}/api/pages/${id}`, { headers: getCommonHeaders() });
       const json = await res.json();
       if (json.ok) {
         currentPage.value = json.data;
@@ -197,11 +195,11 @@ export const usePagesStore = defineStore("pages", () => {
     }
   }
 
-  async function createPage(name: string, urlPath: string, options: any = {}) {
+  async function createPage(name: string, urlPath: string, options: Record<string, unknown> = {}) {
     if (!currentSiteId.value) return null;
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/pages`, {
+      const res = await fetch(`${apiBase}/api/pages`, {
         method: "POST",
         headers: { ...getCommonHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify({ siteId: currentSiteId.value, name, urlPath, ...options }),
@@ -218,6 +216,7 @@ export const usePagesStore = defineStore("pages", () => {
         siteId: currentSiteId.value,
         name,
         urlPath,
+        status: "draft" as const,
         blocks: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -233,7 +232,7 @@ export const usePagesStore = defineStore("pages", () => {
 
   async function savePage() {
     if (!currentPage.value) return;
-    await fetch(`${API}/api/pages/${currentPage.value.id}`, {
+    await fetch(`${apiBase}/api/pages/${currentPage.value.id}`, {
       method: "PATCH",
       headers: auth.authHeaders(),
       body: JSON.stringify({ blocks: currentPage.value.blocks }),
@@ -241,11 +240,14 @@ export const usePagesStore = defineStore("pages", () => {
   }
 
   async function publishPage(id: string) {
-    const res = await fetch(`${API}/api/pages/${id}/publish`, {
+    const res = await fetch(`${apiBase}/api/pages/${id}/publish`, {
       method: "POST", headers: auth.authHeaders(),
     });
-    const json = await res.json();
-    if (json.ok && currentPage.value?.id === id) {
+    const json = (await res.json()) as { ok?: boolean; error?: unknown };
+    if (!json.ok) {
+      throw new Error(typeof json.error === "string" ? json.error : "No se pudo publicar la página");
+    }
+    if (currentPage.value?.id === id) {
       currentPage.value.status = "published";
     }
   }
@@ -296,7 +298,7 @@ export const usePagesStore = defineStore("pages", () => {
     if (!block) return;
     saveToHistory();
     
-    const props = block.props as any;
+    const props = block.props as Record<string, unknown>;
     const currentML = parseInt(String(props.marginLeft || 0)) || 0;
     props.marginLeft = (currentML + dx) + 'px';
     
@@ -341,7 +343,7 @@ export const usePagesStore = defineStore("pages", () => {
 
   async function deletePage(id: string) {
     isLoading.value = true;
-    const res = await fetch(`${API}/api/pages/${id}`, {
+    const res = await fetch(`${apiBase}/api/pages/${id}`, {
       method: "DELETE",
       headers: getCommonHeaders(),
     });
@@ -354,7 +356,7 @@ export const usePagesStore = defineStore("pages", () => {
 
   async function duplicatePage(id: string) {
     isLoading.value = true;
-    const res = await fetch(`${API}/api/pages/${id}/duplicate`, {
+    const res = await fetch(`${apiBase}/api/pages/${id}/duplicate`, {
       method: "POST",
       headers: auth.authHeaders(),
     });
@@ -367,7 +369,7 @@ export const usePagesStore = defineStore("pages", () => {
 
   async function updatePage(id: string, data: Partial<BSPage>) {
     isLoading.value = true;
-    const res = await fetch(`${API}/api/pages/${id}`, {
+    const res = await fetch(`${apiBase}/api/pages/${id}`, {
       method: "PATCH",
       headers: auth.authHeaders(),
       body: JSON.stringify(data),
@@ -381,7 +383,7 @@ export const usePagesStore = defineStore("pages", () => {
   }
 
   async function loadComponents() {
-    const res = await fetch(`${API}/api/components`, { headers: getCommonHeaders() });
+    const res = await fetch(`${apiBase}/api/components`, { headers: getCommonHeaders() });
     const json = await res.json();
     if (json.ok) components.value = json.data;
   }
@@ -400,7 +402,7 @@ export const usePagesStore = defineStore("pages", () => {
       const r = readActiveDesignSystemId(currentSiteId.value);
       designSystemId = r.length > 0 ? r : null;
     }
-    const res = await fetch(`${API}/api/components`, {
+    const res = await fetch(`${apiBase}/api/components`, {
       method: "POST",
       headers: { ...getCommonHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -431,7 +433,7 @@ export const usePagesStore = defineStore("pages", () => {
   ) {
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/components/${id}`, {
+      const res = await fetch(`${apiBase}/api/components/${id}`, {
         method: "PATCH",
         headers: { ...getCommonHeaders(), "Content-Type": "application/json" },
         body: JSON.stringify(patch),
@@ -449,7 +451,7 @@ export const usePagesStore = defineStore("pages", () => {
   async function deleteSite(siteId: string) {
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/sites/${siteId}`, {
+      const res = await fetch(`${apiBase}/api/sites/${siteId}`, {
         method: "DELETE",
         headers: auth.authHeaders(),
       });
@@ -481,7 +483,7 @@ export const usePagesStore = defineStore("pages", () => {
   async function deleteComponent(id: string) {
     isLoading.value = true;
     try {
-      const res = await fetch(`${API}/api/components/${id}`, {
+      const res = await fetch(`${apiBase}/api/components/${id}`, {
         method: "DELETE",
         headers: getCommonHeaders(),
       });
@@ -495,7 +497,7 @@ export const usePagesStore = defineStore("pages", () => {
   }
 
   async function loadAssets() {
-    const res = await fetch(`${API}/api/assets`, { headers: auth.authHeaders() });
+    const res = await fetch(`${apiBase}/api/assets`, { headers: auth.authHeaders() });
     const json = await res.json();
     if (json.ok) assets.value = json.data;
   }

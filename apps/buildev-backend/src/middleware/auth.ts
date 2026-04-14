@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Request, RequestHandler, Response } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "../services/db";
 import { assertSiteOwned } from "../services/buildevGitExport";
@@ -107,6 +107,11 @@ export async function requireAuth(req: AuthRequest, res: Response, next: NextFun
         res.status(401).json({ ok: false, error: "Token inválido o caducado" });
     }
 }
+
+/**
+ * Wrapper tipado para `router.use()` (evita `as any` en rutas Express).
+ */
+export const requireAuthHandler: RequestHandler = requireAuth as unknown as RequestHandler;
 
 /**
  * Asigna `req.auth` con el primer usuario y un sitio por defecto (modo desarrollo).

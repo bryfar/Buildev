@@ -1,11 +1,5 @@
 <template>
-  <div 
-    class="bs-video"
-    :style="{ 
-      width: block.props.width || '100%',
-      aspectRatio: block.props.aspectRatio || '16 / 9'
-    }"
-  >
+  <div class="bs-video" :style="boxStyle">
     <iframe
       v-if="videoUrl"
       :src="videoUrl"
@@ -21,8 +15,17 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import type { CSSProperties } from "vue";
 import type { BSBlock } from "@buildersite/sdk";
 const props = defineProps<{ block: BSBlock }>();
+
+const boxStyle = computed((): CSSProperties => ({
+  width:
+    typeof props.block.props.width === "string" || typeof props.block.props.width === "number"
+      ? String(props.block.props.width)
+      : "100%",
+  aspectRatio: String(props.block.props.aspectRatio ?? "16 / 9"),
+}));
 
 const videoUrl = computed(() => {
   const url = props.block.props.url as string;

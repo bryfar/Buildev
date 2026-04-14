@@ -4,20 +4,12 @@
     "module": "commonjs",
     "rootDir": "src",
     "outDir": "dist",
-    "lib": [
-      "ES2021"
-    ],
+    "declaration": true,
+    "declarationMap": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
     "moduleResolution": "node"
   },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*.ts"]
 }

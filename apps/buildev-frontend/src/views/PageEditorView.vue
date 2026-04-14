@@ -25,7 +25,7 @@
           Remix
         </button>
         <button class="btn-ghost-v2 white" @click="isShareModalOpen = true">Share</button>
-        <button class="btn-publish-v2" @click="isPublishOpen = true">Publish</button>
+        <button type="button" class="btn-publish-v2" @click="headerPublish">Publish</button>
 
         <div class="actions-sep"></div>
         
@@ -313,6 +313,7 @@
       <BSPropertyPanel v-show="!isCodeMode" />
       <BSAIActionPanel v-if="isAIActionOpen" @close="isAIActionOpen = false" />
       <BSShareModal v-if="isShareModalOpen" @close="isShareModalOpen = false" />
+      <BSVisionModal v-if="isVisionOpen" @close="isVisionOpen = false" @generated="onVisionGenerated" />
       <BSGithubModal 
         v-if="isGithubModalOpen" 
         :projectName="store.currentPage?.name || 'project'" 
@@ -349,6 +350,7 @@ import BSMultiplayerCursors from "../components/canvas/BSMultiplayerCursors.vue"
 import BSShareModal from "../components/modals/BSShareModal.vue";
 import BSBubbleMenu from "../components/canvas/BSBubbleMenu.vue";
 import BSGithubModal from "../components/modals/BSGithubModal.vue";
+import BSVisionModal from "../components/modals/BSVisionModal.vue";
 import BSGitSyncModal from "../components/modals/BSGitSyncModal.vue";
 import BSToastHost from "../components/ui/BSToastHost.vue";
 import BSAIConversationOverlay from "../components/editor/BSAIConversationOverlay.vue";
@@ -379,7 +381,7 @@ function goToPreview() {
 const multiplayer = useMultiplayerStore();
 const activeTool = ref<'select' | 'text' | 'container' | 'image'>('select');
 const isShareModalOpen = ref(false);
-
+const isVisionOpen = ref(false);
 
 const zoom = ref(100);
 const canvasArea = ref<HTMLElement | null>(null);
@@ -404,6 +406,48 @@ function pushToast(toast: Omit<ToastItem, "id">) {
   setTimeout(() => {
     toasts.value = toasts.value.filter((t) => t.id !== id);
   }, 9000);
+}
+
+function remixProject(): void {
+  void router.push("/ai-studio");
+}
+
+async function headerPublish(): Promise<void> {
+  const id = store.currentPage?.id;
+  if (!id) {
+    pushToast({
+      kind: "warning",
+      title: "Sin página",
+      message: "No hay página activa para publicar.",
+    });
+    return;
+  }
+  try {
+    await store.publishPage(id);
+    pushToast({
+      kind: "success",
+      title: "Publicado",
+      message: "La página se publicó correctamente.",
+    });
+  } catch (e: unknown) {
+    pushToast({
+      kind: "error",
+      title: "No se pudo publicar",
+      message: e instanceof Error ? e.message : "Error",
+    });
+  }
+}
+
+function onVisionGenerated(payload: unknown): void {
+  if (!store.currentPage) {
+    isVisionOpen.value = false;
+    return;
+  }
+  if (Array.isArray(payload)) {
+    store.currentPage.blocks = payload as BSBlock[];
+    void store.savePage();
+  }
+  isVisionOpen.value = false;
 }
 
 async function requestPreviewDeploy(branch: string) {

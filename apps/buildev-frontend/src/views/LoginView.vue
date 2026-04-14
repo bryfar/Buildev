@@ -120,7 +120,7 @@
             type="button"
             class="sso-btn"
             title="Google"
-            :disabled="ssoBusy || !oauthReady.google || oauthFetchError"
+            :disabled="ssoBusy || !oauthReady.google || Boolean(oauthFetchError)"
             aria-label="Iniciar sesión con Google"
             @click="onGoogle"
           >
@@ -147,7 +147,7 @@
             type="button"
             class="sso-btn"
             title="GitHub"
-            :disabled="ssoBusy || !oauthReady.github || oauthFetchError"
+            :disabled="ssoBusy || !oauthReady.github || Boolean(oauthFetchError)"
             aria-label="Iniciar sesión con GitHub"
             @click="onGithub"
           >
@@ -195,9 +195,7 @@
 import { ref, computed, onMounted, onUnmounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../store/auth";
-import { resolveApiBase } from "../utils/apiBase";
-
-const API = resolveApiBase(import.meta.env.VITE_API_URL);
+import { apiBase } from "../utils/apiBase";
 
 /** En producción, el build debe incluir la URL del API; si no, las peticiones a /api van al dominio del SPA (Vercel 404). */
 const showProdApiMissingBanner = computed(() => {
@@ -211,15 +209,15 @@ const showProdApiMissingBanner = computed(() => {
 /**
  * Texto breve para mensajes de error de red (login / OAuth ready).
  *
- * @param apiBase Resultado de `resolveApiBase`
+ * @param resolved Resultado de `resolveApiBase` / `apiBase`
  * @returns Descripción legible del destino del API
  */
-function describeApiFetchTarget(apiBase: string): string {
-  if (import.meta.env.DEV && apiBase === "") {
+function describeApiFetchTarget(resolved: string): string {
+  if (import.meta.env.DEV && resolved === "") {
     return "proxy Vite /api (véase VITE_DEV_API_PROXY en .env del front; por defecto 127.0.0.1:4000)";
   }
-  if (apiBase === "") return "origen actual + /api";
-  return apiBase;
+  if (resolved === "") return "origen actual + /api";
+  return resolved;
 }
 
 /**
@@ -256,7 +254,7 @@ onMounted(async () => {
   document.body.classList.add(LOGIN_HTML_CLASS);
   oauthFetchError.value = null;
   oauthHints.value = { github: null, google: null };
-  const endpoint = `${API}/api/auth/oauth/login-ready`;
+  const endpoint = `${apiBase}/api/auth/oauth/login-ready`;
   try {
     const res = await fetch(endpoint);
     const rawBody = await res.text();
@@ -275,7 +273,7 @@ onMounted(async () => {
       const hint = truncateNonJsonBodyHint(rawBody);
       const looksLikeVercel404 =
         import.meta.env.PROD &&
-        API === "" &&
+        apiBase === "" &&
         (res.status === 404 ||
           /\bNOT_FOUND\b/i.test(rawBody) ||
           /page could not be found/i.test(rawBody));
@@ -284,10 +282,10 @@ onMounted(async () => {
           "No hay API en este dominio: falta VITE_API_URL en el proyecto del front en Vercel (URL del backend, sin / al final) y un nuevo deploy. El 404 «NOT_FOUND» es la página de Vercel, no tu servidor.";
       } else {
         const portHint =
-          import.meta.env.PROD && API === ""
+          import.meta.env.PROD && apiBase === ""
             ? " Si acabas de configurar VITE_API_URL, genera un nuevo deploy del front."
             : " Comprueba que el proceso en ese puerto sea este backend (p. ej. GET /api/health debe devolver JSON) y que no haya otro servicio usando el mismo puerto.";
-        oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(API)}.${hint ? ` Vista previa: «${hint}».` : ""}${portHint}`;
+        oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(apiBase)}.${hint ? ` Vista previa: «${hint}».` : ""}${portHint}`;
       }
       oauthReady.value = { github: false, google: false };
       return;
@@ -295,8 +293,8 @@ onMounted(async () => {
     if (!res.ok) {
       const apiErr = typeof json.error === "string" && json.error.trim() !== "" ? json.error.trim() : null;
       oauthFetchError.value = apiErr
-        ? `El API respondió ${res.status}: ${apiErr}. Destino: ${describeApiFetchTarget(API)}.`
-        : `El API respondió ${res.status}. Destino: ${describeApiFetchTarget(API)}. Arranca el backend y revisa puerto/proxy.`;
+        ? `El API respondió ${res.status}: ${apiErr}. Destino: ${describeApiFetchTarget(apiBase)}.`
+        : `El API respondió ${res.status}. Destino: ${describeApiFetchTarget(apiBase)}. Arranca el backend y revisa puerto/proxy.`;
       oauthReady.value = { github: false, google: false };
       return;
     }
@@ -315,12 +313,12 @@ onMounted(async () => {
     }
   } catch (e: unknown) {
     const reason = e instanceof Error ? e.message : "Error desconocido";
-    const dest = describeApiFetchTarget(API);
+    const dest = describeApiFetchTarget(apiBase);
     const devExtra = import.meta.env.DEV
-      ? API !== ""
+      ? apiBase !== ""
         ? " Quita VITE_API_URL del .env del frontend (así se usa el proxy /api) o arranca el backend en esa URL exacta."
         : " Desde la raíz del monorepo ejecuta «yarn dev» (levanta API + editor) o en otra terminal «yarn dev:backend»."
-      : API === ""
+        : apiBase === ""
         ? " En Vercel, define VITE_API_URL en el proyecto del front con la URL pública del backend y redespliega."
         : " Revisa VITE_API_URL y que el backend sea accesible desde el navegador (CORS, HTTPS).";
     oauthFetchError.value = `No se pudo contactar al API (${reason}). Destino: ${dest}.${devExtra}`;
@@ -328,6 +326,11 @@ onMounted(async () => {
   }
   const saved = localStorage.getItem("bs_remember_email");
   if (saved) form.value.email = saved;
+  if (typeof route.query.redirect === "string" && route.query.redirect.startsWith("/")) {
+    sessionStorage.setItem("bs_post_oauth_redirect", route.query.redirect);
+  } else {
+    sessionStorage.removeItem("bs_post_oauth_redirect");
+  }
 });
 
 onUnmounted(() => {

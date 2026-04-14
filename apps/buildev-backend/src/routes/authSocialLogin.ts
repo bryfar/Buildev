@@ -3,14 +3,16 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../services/db";
 import { signToken } from "../middleware/auth";
-import { githubLoginRedirectUri, googleLoginRedirectUri } from "../config/oauthEnv";
+import {
+    githubLoginRedirectUri,
+    googleLoginRedirectUri,
+    isGoogleOAuthConfigured,
+} from "../config/oauthEnv";
 import { getGithubClientId, getGithubClientSecret, isGithubOAuthConfigured } from "../config/githubAppEnv";
 import { oauthUserDbErrorResponse } from "../utils/oauthUserDbError";
 import { resolveSessionSiteId } from "../services/sessionSite";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "buildersite_dev_secret";
-const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
-const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
 
 const OAuthCodeSchema = z.object({
     code: z.string().min(1),
@@ -60,7 +62,7 @@ async function findOrCreateOAuthUser(input: OAuthProfileInput): Promise<{ userId
 export function registerSocialLoginRoutes(r: Router): void {
     r.get("/oauth/login-ready", (_req: Request, res: Response) => {
         const github = isGithubOAuthConfigured();
-        const google = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+        const google = isGoogleOAuthConfigured();
         res.json({
             ok: true,
             data: {
@@ -147,6 +149,13 @@ export function registerSocialLoginRoutes(r: Router): void {
                     },
                 }),
             ]);
+            if (!userRes.ok || !emailsRes.ok) {
+                res.status(400).json({
+                    ok: false,
+                    error: `GitHub API respondió ${!userRes.ok ? `usuario HTTP ${userRes.status}` : `emails HTTP ${emailsRes.status}`}. Comprueba el token y los scopes read:user user:email.`,
+                });
+                return;
+            }
             const ghUser = (await userRes.json()) as { login?: string; name?: string | null };
             const emailsRaw: unknown = await emailsRes.json();
             if (!Array.isArray(emailsRaw)) {
@@ -179,10 +188,11 @@ export function registerSocialLoginRoutes(r: Router): void {
     });
 
     r.get("/login/google/url", (_req: Request, res: Response) => {
-        if (!GOOGLE_CLIENT_ID) {
+        if (!isGoogleOAuthConfigured()) {
             res.status(503).json({ ok: false, error: "Google OAuth no está configurado." });
             return;
         }
+        const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
         const state = jwt.sign({ purpose: "google_login" }, JWT_SECRET, { expiresIn: "15m" });
         const googleRedirect = googleLoginRedirectUri();
         const params = new URLSearchParams({
@@ -204,10 +214,12 @@ export function registerSocialLoginRoutes(r: Router): void {
             res.status(400).json({ ok: false, error: parsed.error.flatten() });
             return;
         }
-        if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+        if (!isGoogleOAuthConfigured()) {
             res.status(503).json({ ok: false, error: "Google OAuth no está configurado." });
             return;
         }
+        const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+        const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
         try {
             const decoded = jwt.verify(parsed.data.state, JWT_SECRET) as { purpose?: string };
             if (decoded.purpose !== "google_login") {
@@ -232,6 +244,16 @@ export function registerSocialLoginRoutes(r: Router): void {
                 error?: string;
                 error_description?: string;
             };
+            if (!tokenRes.ok && !tokenJson.access_token) {
+                res.status(400).json({
+                    ok: false,
+                    error:
+                        tokenJson.error_description ??
+                        tokenJson.error ??
+                        `Google token endpoint HTTP ${tokenRes.status}. Revisa GOOGLE_CLIENT_SECRET y que la URI de redirección coincida con ${googleRedirect}.`,
+                });
+                return;
+            }
             if (!tokenJson.access_token) {
                 res.status(400).json({
                     ok: false,
@@ -242,6 +264,13 @@ export function registerSocialLoginRoutes(r: Router): void {
             const ui = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                 headers: { Authorization: `Bearer ${tokenJson.access_token}` },
             });
+            if (!ui.ok) {
+                res.status(400).json({
+                    ok: false,
+                    error: `Google userinfo respondió HTTP ${ui.status}.`,
+                });
+                return;
+            }
             const profile = (await ui.json()) as {
                 email?: string;
                 name?: string;
@@ -253,8 +282,11 @@ export function registerSocialLoginRoutes(r: Router): void {
                 res.status(400).json({ ok: false, error: "Google no devolvió email." });
                 return;
             }
-            if (profile.email_verified === false) {
-                res.status(400).json({ ok: false, error: "El email de Google no está verificado." });
+            if (profile.email_verified !== true) {
+                res.status(400).json({
+                    ok: false,
+                    error: "El email de Google debe estar verificado en tu cuenta de Google.",
+                });
                 return;
             }
             const { userId, siteId, role } = await findOrCreateOAuthUser({

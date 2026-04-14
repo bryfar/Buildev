@@ -1,4 +1,5 @@
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+import { apiBase } from "../utils/apiBase";
+import { readBuildevApiJson } from "../utils/apiResponse";
 
 export const VERCEL_TOKEN_STORAGE_KEY = "bs_vercel_token";
 
@@ -21,13 +22,13 @@ export const deployService = {
     vercelToken: string,
     payload: { projectId: string; teamId?: string },
   ): Promise<unknown> {
-    const res = await fetch(`${API}/api/deploy/vercel/link`, {
+    const res = await fetch(`${apiBase}/api/deploy/vercel/link`, {
       method: "POST",
       headers: headers(authHeaders, siteId, vercelToken),
       body: JSON.stringify({ siteId, ...payload }),
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Vercel link failed");
+    const json = await readBuildevApiJson(res);
+    if (!json.ok) throw new Error(json.error ?? "Vercel link failed");
     return json.data;
   },
 
@@ -37,14 +38,17 @@ export const deployService = {
     vercelToken: string,
     branch: string,
   ): Promise<{ url: string; status: string; deploymentId: string }> {
-    const res = await fetch(`${API}/api/deploy/vercel/preview`, {
+    const res = await fetch(`${apiBase}/api/deploy/vercel/preview`, {
       method: "POST",
       headers: headers(authHeaders, siteId, vercelToken),
       body: JSON.stringify({ siteId, branch }),
     });
-    const json = await res.json();
-    if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Preview deploy failed");
-    return json.data as { url: string; status: string; deploymentId: string };
+    const json = await readBuildevApiJson(res);
+    if (!json.ok) throw new Error(json.error ?? "Preview deploy failed");
+    const data = json.data as { url?: string; status?: string; deploymentId?: string } | null | undefined;
+    if (!data?.url || !data.status || !data.deploymentId) {
+      throw new Error("Respuesta de preview incompleta");
+    }
+    return { url: data.url, status: data.status, deploymentId: data.deploymentId };
   },
 };
-

@@ -1,13 +1,13 @@
 import { Router, Response } from "express";
 import { z } from "zod";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest } from "../middleware/auth";
 import { assertSiteOwned, readVariableJson, writeVariableJson } from "../services/buildevGitExport";
 import { createPreviewDeployment, getDeployment } from "../services/vercelApi";
 import { prisma } from "../services/db";
 
 export const deployRouter = Router();
 
-deployRouter.use(requireAuth as any);
+deployRouter.use(requireAuthHandler);
 
 const VercelLinkSchema = z.object({
   siteId: z.string().min(1),

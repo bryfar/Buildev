@@ -10,6 +10,10 @@
         </div>
         
         <div class="modal-body-v2">
+          <p class="legacy-banner">
+            Este asistente usa endpoints legacy. Para crear repos y hacer push usa el <strong>panel → proyecto → modo GitHub</strong>
+            (integración <code>/api/git</code> con tu cuenta vinculada).
+          </p>
           <div class="form-group-v2">
             <label>New repository name</label>
             <input type="text" v-model="repoName" class="bs-input-v2" placeholder="Enter repo name" />
@@ -108,6 +112,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { githubService } from '../../services/githubService';
+import { formatUnknownError } from '../../utils/apiResponse';
 
 const props = defineProps<{
   projectName: string;
@@ -148,8 +153,8 @@ async function proceedToSync() {
     });
     
     step.value = 'commit';
-  } catch (err: any) {
-    alert("GitHub Error: " + err.message);
+  } catch (err: unknown) {
+    alert("GitHub: " + formatUnknownError(err));
     step.value = 'setup';
   }
 }
@@ -161,8 +166,8 @@ async function handleFinalCommit() {
     await new Promise(r => setTimeout(r, 1000));
     emit('success');
     emit('close');
-  } catch (err: any) {
-    alert("Sync Error: " + err.message);
+  } catch (err: unknown) {
+    alert("Sync: " + formatUnknownError(err));
   } finally {
     isPushing.value = false;
   }
@@ -216,6 +221,17 @@ async function handleFinalCommit() {
 .modal-body-v2 { padding: 24px; }
 .modal-body-v2.no-padding { padding: 0; }
 
+.legacy-banner {
+  font-size: 13px;
+  line-height: 1.45;
+  color: #555;
+  background: #f6f8fa;
+  border: 1px solid #e8eaed;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+.theme-dark .legacy-banner { background: #222; border-color: #333; color: #ccc; }
 .form-group-v2 { margin-bottom: 24px; }
 .form-group-v2 label { display: block; font-size: 14px; color: #555; margin-bottom: 8px; font-weight: 500; }
 .theme-dark .form-group-v2 label { color: #aaa; }

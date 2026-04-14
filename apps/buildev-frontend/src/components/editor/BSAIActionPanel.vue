@@ -84,8 +84,7 @@ async function handleImageUpload(e: Event) {
       }
       isAnalyzing.value = false;
     };
-  } catch (err) {
-    console.error("AI: Image analysis failed", err);
+  } catch {
     isAnalyzing.value = false;
   }
 }

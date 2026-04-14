@@ -2,6 +2,11 @@ import OpenAI from "openai";
 import { SYSTEM_PROMPT_VISION, getVisionUserPrompt } from "./prompts/vision";
 import type { BuildevNode } from "@buildev/core";
 
+const EDITOR_CHAT_SYSTEM =
+  "Eres el asistente de diseño del editor visual Buildev. Responde en el mismo idioma que el usuario, " +
+  "de forma breve y accionable. Prioriza consejos de layout, jerarquía visual, tipografía, CTAs, espaciado y accesibilidad. " +
+  "No inventes bloques JSON ni código salvo que el usuario lo pida explícitamente.";
+
 export interface AIEngineConfig {
   apiKey: string;
   model?: string;
@@ -45,19 +50,55 @@ export class BuildevAIEngine {
       const content = response.choices[0].message.content;
       if (!content) throw new Error("IA returned empty content");
 
-      const data = JSON.parse(content);
-      return data.nodes || [];
-    } catch (err: any) {
-      console.error("[Buildev AI Engine] Vision Error:", err.message);
-      throw new Error(`AI processing failed: ${err.message}`);
+      const data = JSON.parse(content) as { nodes?: unknown };
+      return Array.isArray(data.nodes) ? (data.nodes as BuildevNode[]) : [];
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(`AI processing failed: ${message}`);
     }
   }
 
   /**
-   * Genera sugerencias de diseño basadas en una instrucción de chat.
+   * Chat del editor: conversación con el modelo (BYOK).
+   *
+   * @param turns Mensajes user/assistant/system en orden (sin incluir el system fijo de Buildev).
+   * @returns Texto de respuesta del asistente.
    */
-  async chatToStyle(nodes: BuildevNode[], instruction: string): Promise<Partial<BuildevNode>[]> {
-     // Implementación futura para Sprint 3.5 (Chat editing)
-     return [];
+  async editorChat(
+    turns: Array<{ role: "user" | "assistant" | "system"; content: string }>,
+  ): Promise<string> {
+    if (turns.length === 0) {
+      throw new Error("Se requiere al menos un mensaje");
+    }
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      { role: "system", content: EDITOR_CHAT_SYSTEM },
+      ...turns.map(
+        (t): OpenAI.Chat.ChatCompletionMessageParam => ({
+          role: t.role,
+          content: t.content,
+        }),
+      ),
+    ];
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages,
+      temperature: 0.55,
+    });
+    const text = response.choices[0]?.message?.content?.trim();
+    if (!text) {
+      throw new Error("La IA no devolvió contenido");
+    }
+    return text;
+  }
+
+  /**
+   * Genera sugerencias de diseño basadas en una instrucción de chat (edición de nodos; roadmap).
+   *
+   * @param _nodes Árbol actual (reservado para futuras mutaciones).
+   * @param _instruction Instrucción del usuario.
+   * @returns Parches parciales de nodos (vacío hasta Sprint 3.5).
+   */
+  async chatToStyle(_nodes: BuildevNode[], _instruction: string): Promise<Partial<BuildevNode>[]> {
+    return [];
   }
 }

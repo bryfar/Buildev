@@ -27,7 +27,7 @@ onMounted(async () => {
   const monacoInstance = await loader.init();
   
   if (editorContainer.value) {
-    editor = monacoInstance.editor.create(editorContainer.value, {
+    const ed = monacoInstance.editor.create(editorContainer.value, {
       value: props.modelValue,
       language: props.language || 'json',
       theme: props.theme === 'vs-dark' ? 'vs-dark' : 'vs',
@@ -48,13 +48,14 @@ onMounted(async () => {
         horizontalScrollbarSize: 10
       }
     });
+    editor = ed;
 
-    editor.onDidChangeCursorPosition((e) => {
+    ed.onDidChangeCursorPosition((e: monaco.editor.ICursorPositionChangedEvent) => {
       emit('cursorChange', { line: e.position.lineNumber, column: e.position.column });
     });
 
-    editor.onDidChangeModelContent(() => {
-      const value = editor?.getValue();
+    ed.onDidChangeModelContent(() => {
+      const value = ed.getValue();
       if (value !== props.modelValue) {
         emit('update:modelValue', value);
       }

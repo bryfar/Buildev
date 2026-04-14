@@ -1,11 +1,11 @@
 import { Router, Response } from "express";
 import { prisma } from "../services/db";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest } from "../middleware/auth";
 import { requireNonEmptySiteId } from "../middleware/activeSite";
 
 export const assetsRouter = Router();
 
-assetsRouter.use(requireAuth as any);
+assetsRouter.use(requireAuthHandler);
 
 // List assets
 assetsRouter.get("/", async (req: AuthRequest, res: Response) => {

@@ -1,13 +1,13 @@
 import { Router, Response } from "express";
 import { z } from "zod";
 import { prisma } from "../services/db";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuthHandler, AuthRequest } from "../middleware/auth";
 import { requireNonEmptySiteId } from "../middleware/activeSite";
 import type { BSFieldDefinition } from "@buildersite/domain";
 
 export const contentModelRouter = Router();
 
-contentModelRouter.use(requireAuth as any);
+contentModelRouter.use(requireAuthHandler);
 
 const FieldDefSchema = z.object({
     name: z.string().min(1),

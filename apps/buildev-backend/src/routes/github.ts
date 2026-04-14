@@ -1,8 +1,29 @@
 import { Router, Request, Response } from "express";
 import { z } from "zod";
-import { prisma } from "../services/db";
 
 export const githubRouter = Router();
+
+// ─── POST /api/github/repos (modal legacy; usar Git integrado /api/git) ─────────
+githubRouter.post("/repos", (_req: Request, res: Response) => {
+    res.status(501).json({
+        ok: false,
+        error: "Crear repositorio desde este endpoint no está implementado. Usa la integración Git del panel o la API /api/git.",
+    });
+});
+
+githubRouter.post("/push", (_req: Request, res: Response) => {
+    res.status(501).json({
+        ok: false,
+        error: "Usa /api/git/push con el sitio vinculado en lugar de /api/github/push.",
+    });
+});
+
+githubRouter.post("/pulls", (_req: Request, res: Response) => {
+    res.status(501).json({
+        ok: false,
+        error: "Abrir PR desde este endpoint no está implementado. Usa /api/git/pull-requests.",
+    });
+});
 
 // ─── GET /api/github/repos ────────────────────────────────────────────────────
 githubRouter.get("/repos", async (req: Request, res: Response) => {
@@ -15,8 +36,9 @@ githubRouter.get("/repos", async (req: Request, res: Response) => {
         });
         const repos = await response.json();
         res.json({ ok: true, data: repos });
-    } catch (err: any) {
-        res.status(500).json({ ok: false, error: err.message });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error";
+        res.status(500).json({ ok: false, error: message });
     }
 });
 
@@ -24,7 +46,7 @@ githubRouter.get("/repos", async (req: Request, res: Response) => {
 const SyncSchema = z.object({
     repo: z.string(), // "user/repo"
     path: z.string().default(".buildev/schema.json"),
-    content: z.any(),
+    content: z.unknown(),
     token: z.string(),
     message: z.string().optional(),
 });
@@ -43,7 +65,7 @@ githubRouter.post("/sync", async (req: Request, res: Response) => {
         
         let sha: string | undefined;
         if (fileRes.status === 200) {
-            const fileData = await fileRes.json() as any;
+            const fileData = (await fileRes.json()) as { sha?: string };
             sha = fileData.sha;
         }
 
@@ -58,11 +80,12 @@ githubRouter.post("/sync", async (req: Request, res: Response) => {
             }),
         });
 
-        const updateData = await updateRes.json() as any;
-        if (!updateRes.ok) throw new Error(updateData.message || "Failed to push to GitHub");
+        const updateData = (await updateRes.json()) as { message?: string };
+        if (!updateRes.ok) throw new Error(updateData.message ?? "Failed to push to GitHub");
 
         res.json({ ok: true, data: updateData });
-    } catch (err: any) {
-        res.status(500).json({ ok: false, error: err.message });
+    } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Error";
+        res.status(500).json({ ok: false, error: message });
     }
 });

@@ -474,50 +474,59 @@ const selectedNodeData = computed(() => {
   return componentTree.value.find(n => n.id === selectedNode.value);
 });
 
+type VeProp =
+  | { label: string; type: "select"; options: string[]; key: string }
+  | { label: string; type: "font" | "weight"; key: string }
+  | { label: string; type: "number"; key: string }
+  | { label: string; type: "range"; min: number; max: number; unit: string; key: string }
+  | { label: string; type: "color"; key: string };
+
+type VePropGroup = { id: string; title: string; props: VeProp[] };
+
 // ─── DYNAMIC PROPERTY GROUPS ───────────────────────────────────────
-const propertyGroups = computed(() => {
+const propertyGroups = computed((): VePropGroup[] => {
   const node = selectedNodeData.value;
   if (!node) return [];
 
-  const groups = [
-    { 
-      id: 'layout', 
-      title: 'LAYOUT', 
+  const groups: VePropGroup[] = [
+    {
+      id: "layout",
+      title: "LAYOUT",
       props: [
-        { label: 'Display', type: 'select', options: ['Flex', 'Block', 'Grid', 'None'], key: 'display' },
-        { label: 'Direction', type: 'select', options: ['Row', 'Column'], key: 'flexDirection' },
-      ]
+        { label: "Display", type: "select", options: ["Flex", "Block", "Grid", "None"], key: "display" },
+        { label: "Direction", type: "select", options: ["Row", "Column"], key: "flexDirection" },
+      ],
     },
     {
-      id: 'spacing',
-      title: 'SPACING',
+      id: "spacing",
+      title: "SPACING",
       props: [
-        { label: 'Padding', type: 'number', key: 'padding' },
-        { label: 'Margin', type: 'number', key: 'margin' },
-      ]
-    }
+        { label: "Padding", type: "number", key: "padding" },
+        { label: "Margin", type: "number", key: "margin" },
+      ],
+    },
   ];
 
-  if (['h1', 'p', 'span'].includes(node.tag)) {
+  if (["h1", "p", "span"].includes(node.tag)) {
     groups.push({
-      id: 'typography',
-      title: 'TYPOGRAPHY',
+      id: "typography",
+      title: "TYPOGRAPHY",
       props: [
-        { label: 'Font', type: 'font', key: 'fontFamily' },
-        { label: 'Weight', type: 'weight', key: 'fontWeight' },
-        { label: 'Size', type: 'number', key: 'fontSize' },
-        { label: 'Color', type: 'color', key: 'colorValue' }
-      ]
+        { label: "Font", type: "font", key: "fontFamily" },
+        { label: "Weight", type: "weight", key: "fontWeight" },
+        { label: "Size", type: "number", key: "fontSize" },
+        { label: "Color", type: "color", key: "colorValue" },
+      ],
     });
   }
 
   groups.push({
-    id: 'effects',
-    title: 'EFFECTS',
+    id: "effects",
+    title: "EFFECTS",
     props: [
-      { label: 'Opacity', type: 'range', min: 0, max: 100, unit: '%', key: 'opacity' },
-      { label: 'Radius', type: 'range', min: 0, max: 50, unit: 'px', key: 'borderRadius' }
-    ]
+      { label: "Opacity", type: "range", min: 0, max: 100, unit: "%", key: "opacity" },
+      { label: "Radius", type: "range", min: 0, max: 50, unit: "px", key: "borderRadius" },
+    ],
   });
 
   return groups;

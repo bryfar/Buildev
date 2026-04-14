@@ -47,6 +47,11 @@ const routes = [
     component: () => import("./views/OAuthLoginCallbackView.vue"),
     meta: { public: true },
   },
+  {
+    path: "/invite",
+    component: () => import("./views/InviteAcceptView.vue"),
+    meta: { public: true },
+  },
 ];
 
 const router = createRouter({

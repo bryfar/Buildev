@@ -11,6 +11,7 @@ import {
     isGithubOAuthConfigured,
 } from "../config/githubAppEnv";
 import { registerSocialLoginRoutes } from "./authSocialLogin";
+import { registerSiteInvitePublicRoutes } from "./siteInvitesPublic";
 import { resolveSessionSiteId } from "../services/sessionSite";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "buildersite_dev_secret";
@@ -19,6 +20,8 @@ export const authRouter = Router();
 
 /** Login social (Google/GitHub): rutas públicas bajo `/api/auth`. */
 registerSocialLoginRoutes(authRouter);
+/** Invitaciones a colaborar: vista previa y aceptación (públicas salvo POST con Bearer). */
+registerSiteInvitePublicRoutes(authRouter);
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 const RegisterSchema = z.object({

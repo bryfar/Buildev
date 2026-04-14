@@ -7,11 +7,11 @@ const pagesStore = usePagesStore();
 const router = useRouter();
 
 onMounted(() => {
-  void pagesStore.fetchPages();
+  void pagesStore.loadPages();
 });
 
 function openPage(id: string) {
-  router.push({ name: "page-editor", params: { id } });
+  void router.push(`/editor/${id}`);
 }
 </script>
 
@@ -20,10 +20,7 @@ function openPage(id: string) {
     <h2>Pages</h2>
     <p class="hint">Listado de páginas gestionadas por Buildev.</p>
 
-    <div v-if="pagesStore.loading">Cargando páginas...</div>
-    <div v-else-if="pagesStore.error" class="error">
-      Error: {{ pagesStore.error }}
-    </div>
+    <div v-if="pagesStore.isLoading">Cargando páginas...</div>
     <ul v-else class="page-list">
       <li
         v-for="page in pagesStore.pages"
@@ -48,21 +45,14 @@ h2 {
 
 .hint {
   margin: 0 0 1rem;
-  font-size: 0.85rem;
-  color: #9ca3af;
-}
-
-.error {
-  color: #fecaca;
+  color: #64748b;
+  font-size: 0.9rem;
 }
 
 .page-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 }
 
 .page-item {
@@ -70,26 +60,30 @@ h2 {
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  background: #0f172a;
-  border: 1px solid #1f2937;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
   cursor: pointer;
+  transition: background 0.15s ease;
 }
 
 .page-item:hover {
-  border-color: #3b82f6;
+  background: #f8fafc;
 }
 
 .url {
-  margin-left: 0.5rem;
-  font-size: 0.8rem;
-  color: #9ca3af;
+  display: block;
+  font-size: 0.85rem;
+  color: #64748b;
 }
 
 .status {
   font-size: 0.75rem;
   text-transform: uppercase;
-  color: #a5b4fc;
+  color: #94a3b8;
+}
+
+.error {
+  color: #b91c1c;
 }
 </style>
-

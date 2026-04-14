@@ -39,3 +39,14 @@ export function googleLoginRedirectUri(): string {
     if (pub) return `${pub}/auth/google`;
     return "http://localhost:5173/auth/google";
 }
+
+/**
+ * Google OAuth de login requiere client ID y secret en el entorno.
+ *
+ * @returns `true` si ambos valores están definidos (no vacíos).
+ */
+export function isGoogleOAuthConfigured(): boolean {
+    const id = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
+    const secret = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
+    return id.length > 0 && secret.length > 0;
+}

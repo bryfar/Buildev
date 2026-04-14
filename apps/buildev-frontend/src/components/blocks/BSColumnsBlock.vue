@@ -19,6 +19,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import type { CSSProperties } from "vue";
 import type { BSBlock } from "@buildersite/sdk";
 
 const props = defineProps<{ block: BSBlock }>();
@@ -32,12 +33,17 @@ function gapCss(g: unknown): string {
   return s || "20px";
 }
 
-const columnsStyle = computed(() => ({
-  display: "grid",
-  gridTemplateColumns: `repeat(${props.block.props.columns || 2}, 1fr)`,
-  gap: gapCss(props.block.props.gap),
-  padding: props.block.props.padding || "0",
-}));
+const columnsStyle = computed((): CSSProperties => {
+  const pad = props.block.props.padding;
+  const padding: string | number =
+    typeof pad === "string" || typeof pad === "number" ? pad : "0";
+  return {
+    display: "grid",
+    gridTemplateColumns: `repeat(${props.block.props.columns || 2}, 1fr)`,
+    gap: gapCss(props.block.props.gap),
+    padding,
+  };
+});
 
 function getColumnChildren(index: number) {
   return props.block.children?.filter((c) => (c.props as { column?: number }).column === index) || [];

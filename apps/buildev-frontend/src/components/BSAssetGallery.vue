@@ -38,6 +38,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { usePagesStore } from "../store/pages";
+import { useAuthStore } from "../store/auth";
+import { apiBase } from "../utils/apiBase";
+
+interface GalleryAsset {
+  id: string;
+  name: string;
+  url: string;
+  mimeType: string;
+}
 
 const props = defineProps<{
   isOpen: boolean;
@@ -45,6 +54,7 @@ const props = defineProps<{
 
 const emit = defineEmits(["close", "select"]);
 const store = usePagesStore();
+const auth = useAuthStore();
 const fileInput = ref<HTMLInputElement | null>(null);
 
 onMounted(() => {
@@ -55,12 +65,12 @@ function close() {
   emit("close");
 }
 
-function selectAsset(asset: any) {
+function selectAsset(asset: GalleryAsset) {
   emit("select", asset);
   close();
 }
 
-function isImage(asset: any) {
+function isImage(asset: GalleryAsset) {
   return asset.mimeType.startsWith("image/");
 }
 
@@ -77,9 +87,13 @@ async function handleFileUpload(e: Event) {
   const url = URL.createObjectURL(file);
   
   // Save record to backend
-  const res = await fetch(`${store.API}/api/assets`, {
+  const headers: Record<string, string> = { ...auth.authHeaders() };
+  if (store.currentSiteId) {
+    headers["x-site-id"] = store.currentSiteId;
+  }
+  const res = await fetch(`${apiBase}/api/assets`, {
     method: "POST",
-    headers: store.auth.authHeaders(),
+    headers,
     body: JSON.stringify({
       name: file.name,
       url: url,

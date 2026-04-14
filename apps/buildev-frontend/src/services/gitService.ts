@@ -1,4 +1,5 @@
-const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+import { apiBase } from "../utils/apiBase";
+import { readBuildevApiJson } from "../utils/apiResponse";
 
 /** @deprecated Prefer cuenta GitHub vinculada vía OAuth; el PAT es opcional (avanzado). */
 export const GITHUB_PAT_STORAGE_KEY = "bs_github_pat";
@@ -49,7 +50,7 @@ export const gitService = {
         githubToken: string | undefined,
         payload: GitLinkPayload & { linkAfterImport?: boolean },
     ): Promise<unknown> {
-        const res = await fetch(`${API}/api/git/import`, {
+        const res = await fetch(`${apiBase}/api/git/import`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({
@@ -60,8 +61,8 @@ export const gitService = {
                 linkAfterImport: payload.linkAfterImport ?? true,
             }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Import failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Import failed");
         return json.data;
     },
 
@@ -71,13 +72,13 @@ export const gitService = {
         githubToken: string | undefined,
         payload: GitLinkPayload,
     ): Promise<unknown> {
-        const res = await fetch(`${API}/api/git/link`, {
+        const res = await fetch(`${apiBase}/api/git/link`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({ siteId, ...payload }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Link failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Link failed");
         return json.data;
     },
 
@@ -87,22 +88,22 @@ export const gitService = {
         githubToken: string | undefined,
     ): Promise<GitStatusData> {
         const qs = new URLSearchParams({ siteId });
-        const res = await fetch(`${API}/api/git/status?${qs.toString()}`, {
+        const res = await fetch(`${apiBase}/api/git/status?${qs.toString()}`, {
             headers: headers(authHeaders, siteId, githubToken),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Status failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Status failed");
         return json.data as GitStatusData;
     },
 
     async pull(authHeaders: Record<string, string>, siteId: string, githubToken: string | undefined): Promise<unknown> {
-        const res = await fetch(`${API}/api/git/pull`, {
+        const res = await fetch(`${apiBase}/api/git/pull`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({ siteId }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Pull failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Pull failed");
         return json.data;
     },
 
@@ -112,13 +113,13 @@ export const gitService = {
         githubToken: string | undefined,
         message: string,
     ): Promise<unknown> {
-        const res = await fetch(`${API}/api/git/push`, {
+        const res = await fetch(`${apiBase}/api/git/push`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({ siteId, message }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Push failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Push failed");
         return json.data;
     },
 
@@ -128,11 +129,11 @@ export const gitService = {
         githubToken: string | undefined,
     ): Promise<string[]> {
         const qs = new URLSearchParams({ siteId });
-        const res = await fetch(`${API}/api/git/branches?${qs.toString()}`, {
+        const res = await fetch(`${apiBase}/api/git/branches?${qs.toString()}`, {
             headers: headers(authHeaders, siteId, githubToken),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "List branches failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "List branches failed");
         return json.data as string[];
     },
 
@@ -143,13 +144,13 @@ export const gitService = {
         name: string,
         fromBranch: string,
     ): Promise<unknown> {
-        const res = await fetch(`${API}/api/git/branches`, {
+        const res = await fetch(`${apiBase}/api/git/branches`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({ siteId, name, fromBranch }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Create branch failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Create branch failed");
         return json.data;
     },
 
@@ -162,13 +163,13 @@ export const gitService = {
         head: string,
         base: string,
     ): Promise<{ number: number; html_url: string }> {
-        const res = await fetch(`${API}/api/git/pull-requests`, {
+        const res = await fetch(`${apiBase}/api/git/pull-requests`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({ siteId, title, body, head, base }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Create PR failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Create PR failed");
         return json.data as { number: number; html_url: string };
     },
 
@@ -179,11 +180,11 @@ export const gitService = {
         limit: number,
     ): Promise<unknown[]> {
         const qs = new URLSearchParams({ siteId, limit: String(limit) });
-        const res = await fetch(`${API}/api/git/history?${qs.toString()}`, {
+        const res = await fetch(`${apiBase}/api/git/history?${qs.toString()}`, {
             headers: headers(authHeaders, siteId, githubToken),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "History failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "History failed");
         return json.data as unknown[];
     },
 
@@ -193,13 +194,13 @@ export const gitService = {
         githubToken: string | undefined,
         activityId: string,
     ): Promise<unknown> {
-        const res = await fetch(`${API}/api/git/restore`, {
+        const res = await fetch(`${apiBase}/api/git/restore`, {
             method: "POST",
             headers: headers(authHeaders, siteId, githubToken),
             body: JSON.stringify({ siteId, activityId }),
         });
-        const json = await res.json();
-        if (!json.ok) throw new Error(typeof json.error === "string" ? json.error : "Restore failed");
+        const json = await readBuildevApiJson(res);
+        if (!json.ok) throw new Error(json.error ?? "Restore failed");
         return json.data;
     },
 };
