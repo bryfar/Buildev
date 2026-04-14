@@ -4,11 +4,11 @@ import { z } from "zod";
 import { prisma } from "../services/db";
 import { signToken } from "../middleware/auth";
 import { githubLoginRedirectUri, googleLoginRedirectUri } from "../config/oauthEnv";
+import { getGithubClientId, getGithubClientSecret, isGithubOAuthConfigured } from "../config/githubAppEnv";
 import { oauthUserDbErrorResponse } from "../utils/oauthUserDbError";
+import { resolveSessionSiteId } from "../services/sessionSite";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "buildersite_dev_secret";
-const GITHUB_CLIENT_ID = (process.env.GITHUB_CLIENT_ID ?? "").trim();
-const GITHUB_CLIENT_SECRET = (process.env.GITHUB_CLIENT_SECRET ?? "").trim();
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID ?? "").trim();
 const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET ?? "").trim();
 
@@ -17,17 +17,6 @@ const OAuthCodeSchema = z.object({
     state: z.string().min(1),
 });
 
-/** Sitio por defecto si el usuario no tiene `siteId`. */
-async function ensureUserHasSite(userId: string): Promise<string> {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user?.siteId) return user.siteId;
-    const site = await prisma.site.create({
-        data: { name: "Mi workspace", defaultLocale: "es" },
-    });
-    await prisma.user.update({ where: { id: userId }, data: { siteId: site.id } });
-    return site.id;
-}
-
 interface OAuthProfileInput {
     email: string;
     name: string;
@@ -35,7 +24,7 @@ interface OAuthProfileInput {
     githubUsername?: string | null;
 }
 
-/** Usuario OAuth por email o creación con sitio nuevo. */
+/** Usuario OAuth por email o creación sin proyectos hasta que el usuario cree uno. */
 async function findOrCreateOAuthUser(input: OAuthProfileInput): Promise<{ userId: string; siteId: string; role: string }> {
     const email = input.email.toLowerCase().trim();
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -52,29 +41,25 @@ async function findOrCreateOAuthUser(input: OAuthProfileInput): Promise<{ userId
                     : {}),
             },
         });
-        const siteId = await ensureUserHasSite(existing.id);
+        const siteId = await resolveSessionSiteId(existing.id);
         return { userId: existing.id, siteId, role: existing.role };
     }
-    const site = await prisma.site.create({
-        data: { name: `${input.name.trim() || "Mi"} workspace`, defaultLocale: "es" },
-    });
     const user = await prisma.user.create({
         data: {
             email,
             name: input.name.trim() || email.split("@")[0] || "Usuario",
             role: "admin",
-            siteId: site.id,
             githubAccessToken: input.githubAccessToken ?? null,
             githubUsername: input.githubUsername ?? null,
         },
     });
-    return { userId: user.id, siteId: site.id, role: user.role };
+    return { userId: user.id, siteId: "", role: user.role };
 }
 
 /** Rutas públicas de login Google/GitHub bajo `/api/auth`. */
 export function registerSocialLoginRoutes(r: Router): void {
     r.get("/oauth/login-ready", (_req: Request, res: Response) => {
-        const github = Boolean(GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET);
+        const github = isGithubOAuthConfigured();
         const google = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
         res.json({
             ok: true,
@@ -90,14 +75,14 @@ export function registerSocialLoginRoutes(r: Router): void {
     });
 
     r.get("/login/github/url", (_req: Request, res: Response) => {
-        if (!GITHUB_CLIENT_ID) {
+        if (!isGithubOAuthConfigured()) {
             res.status(503).json({ ok: false, error: "GitHub OAuth no está configurado." });
             return;
         }
         const state = jwt.sign({ purpose: "github_login" }, JWT_SECRET, { expiresIn: "15m" });
         const ghRedirect = githubLoginRedirectUri();
         const params = new URLSearchParams({
-            client_id: GITHUB_CLIENT_ID,
+            client_id: getGithubClientId(),
             redirect_uri: ghRedirect,
             scope: "read:user user:email",
             state,
@@ -112,7 +97,7 @@ export function registerSocialLoginRoutes(r: Router): void {
             res.status(400).json({ ok: false, error: parsed.error.flatten() });
             return;
         }
-        if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
+        if (!isGithubOAuthConfigured()) {
             res.status(503).json({ ok: false, error: "GitHub OAuth no está configurado." });
             return;
         }
@@ -127,8 +112,8 @@ export function registerSocialLoginRoutes(r: Router): void {
                 method: "POST",
                 headers: { Accept: "application/json", "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    client_id: GITHUB_CLIENT_ID,
-                    client_secret: GITHUB_CLIENT_SECRET,
+                    client_id: getGithubClientId(),
+                    client_secret: getGithubClientSecret(),
                     code: parsed.data.code,
                     redirect_uri: ghRedirect,
                 }),

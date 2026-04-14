@@ -64,7 +64,11 @@
         <ul class="oauth-steps">
           <li>
             <code>GITHUB_CLIENT_ID</code> y <code>GITHUB_CLIENT_SECRET</code> (obligatorios; sin ellos no aparece
-            «listo»).
+            «listo»). Sin valores de plantilla (p. ej. «REEMPLAZA»): el API los detecta y marca OAuth como no listo.
+          </li>
+          <li>
+            Si arrancas el API con <code>yarn dev</code> desde la raíz del repo, define las variables en
+            <code>apps/buildev-backend/.env</code> (el servidor las lee desde esa ruta aunque el proceso no tenga cwd ahí).
           </li>
           <li>
             <code>PUBLIC_APP_URL</code>: URL del front <strong>sin</strong> barra final (p. ej.

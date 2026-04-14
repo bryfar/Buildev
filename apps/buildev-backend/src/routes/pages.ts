@@ -3,6 +3,7 @@ import { z } from "zod";
 import { v4 as uuid } from "uuid";
 import { prisma } from "../services/db";
 import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireNonEmptySiteId } from "../middleware/activeSite";
 import type { BSBlock, BSVariant } from "@buildersite/domain";
 
 export const pagesRouter = Router();
@@ -40,6 +41,7 @@ const CreatePageSchema = z.object({
 });
 
 pagesRouter.post("/", async (req: AuthRequest, res: Response) => {
+    if (!requireNonEmptySiteId(req, res)) return;
     const parsed = CreatePageSchema.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ ok: false, error: parsed.error.flatten() }); return;
@@ -67,9 +69,17 @@ const UpdatePageSchema = z.object({
 });
 
 pagesRouter.patch("/:id", async (req: AuthRequest, res: Response) => {
+    if (!requireNonEmptySiteId(req, res)) return;
     const parsed = UpdatePageSchema.safeParse(req.body);
     if (!parsed.success) {
         res.status(400).json({ ok: false, error: parsed.error.flatten() }); return;
+    }
+    const existing = await prisma.page.findFirst({
+        where: { id: req.params.id, siteId: req.auth!.siteId },
+    });
+    if (!existing) {
+        res.status(404).json({ ok: false, error: "Page not found" });
+        return;
     }
     const { blocks, variants, script, ...rest } = parsed.data;
     const data: Record<string, unknown> = { ...rest };
@@ -86,12 +96,20 @@ pagesRouter.patch("/:id", async (req: AuthRequest, res: Response) => {
 
 // ─── DELETE /api/pages/:id ────────────────────────────────────────────────────
 pagesRouter.delete("/:id", async (req: AuthRequest, res: Response) => {
-    await prisma.page.delete({ where: { id: req.params.id } });
+    if (!requireNonEmptySiteId(req, res)) return;
+    const result = await prisma.page.deleteMany({
+        where: { id: req.params.id, siteId: req.auth!.siteId },
+    });
+    if (result.count === 0) {
+        res.status(404).json({ ok: false, error: "Page not found" });
+        return;
+    }
     res.json({ ok: true, data: null });
 });
 
 // ─── POST /api/pages/:id/publish ─────────────────────────────────────────────
 pagesRouter.post("/:id/publish", async (req: AuthRequest, res: Response) => {
+    if (!requireNonEmptySiteId(req, res)) return;
     const page = await prisma.page.findFirst({
         where: { id: req.params.id, siteId: req.auth!.siteId },
     });
@@ -118,6 +136,7 @@ pagesRouter.post("/:id/publish", async (req: AuthRequest, res: Response) => {
 
 // ─── POST /api/pages/:id/duplicate ───────────────────────────────────────────
 pagesRouter.post("/:id/duplicate", async (req: AuthRequest, res: Response) => {
+    if (!requireNonEmptySiteId(req, res)) return;
     const original = await prisma.page.findFirst({
         where: { id: req.params.id, siteId: req.auth!.siteId },
     });

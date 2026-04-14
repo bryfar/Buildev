@@ -124,14 +124,19 @@ export const useAuthStore = defineStore("auth", () => {
         localStorage.removeItem("bs_role");
     }
 
-    function _persist(data: { token: string; userId: string; siteId: string; role?: string }) {
+    function _persist(data: { token: string; userId: string; siteId?: string; role?: string }) {
+        const sid = (data.siteId ?? "").trim();
         token.value = data.token;
         userId.value = data.userId;
-        siteId.value = data.siteId;
+        siteId.value = sid.length > 0 ? sid : null;
         role.value = data.role ?? "editor";
         localStorage.setItem("bs_token", data.token);
         localStorage.setItem("bs_userId", data.userId);
-        localStorage.setItem("bs_siteId", data.siteId);
+        if (sid.length > 0) {
+            localStorage.setItem("bs_siteId", sid);
+        } else {
+            localStorage.removeItem("bs_siteId");
+        }
         localStorage.setItem("bs_role", data.role ?? "editor");
     }
 
@@ -140,7 +145,7 @@ export const useAuthStore = defineStore("auth", () => {
      *
      * @param data Token y metadatos del API
      */
-    function persistSession(data: { token: string; userId: string; siteId: string; role?: string }): void {
+    function persistSession(data: { token: string; userId: string; siteId?: string; role?: string }): void {
         _persist(data);
     }
 

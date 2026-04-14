@@ -47,7 +47,7 @@ onMounted(async () => {
     let json: {
       ok?: boolean;
       error?: string;
-      data?: { token: string; userId: string; siteId: string; role?: string };
+      data?: { token: string; userId: string; siteId?: string; role?: string };
     };
     try {
       json = JSON.parse(raw) as typeof json;

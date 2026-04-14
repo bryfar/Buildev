@@ -1,7 +1,9 @@
 import { Router, Response } from "express";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "../services/db";
-import { requireAuth, AuthRequest } from "../middleware/auth";
+import { requireAuth, AuthRequest, signToken } from "../middleware/auth";
+import { assertSiteOwned } from "../services/buildevGitExport";
 import {
     BuildevProjectSettingsStoredSchema,
     PROJECT_SETTINGS_VARIABLE_KEY,
@@ -13,8 +15,19 @@ sitesRouter.use(requireAuth as any);
 
 // ─── GET /api/sites ───────────────────────────────────────────────────────────
 sitesRouter.get("/", async (req: AuthRequest, res: Response) => {
+    const userRow = await prisma.user.findUnique({
+        where: { id: req.auth!.userId },
+        select: { siteId: true },
+    });
+    const orFilter: Prisma.SiteWhereInput[] = [{ userId: req.auth!.userId }];
+    if (userRow?.siteId) {
+        orFilter.push({
+            id: userRow.siteId,
+            OR: [{ userId: null }, { userId: req.auth!.userId }],
+        });
+    }
     const sites = await prisma.site.findMany({
-        where: { userId: req.auth!.userId },
+        where: { OR: orFilter },
         orderBy: { updatedAt: "desc" },
     });
     const siteIds = sites.map((s) => s.id);
@@ -77,15 +90,11 @@ sitesRouter.post("/", async (req: AuthRequest, res: Response) => {
         res.status(400).json({ ok: false, error: parsed.error.flatten() }); return;
     }
 
-    // Check if user exists (since auth might be mocked)
-    let userId = req.auth!.userId;
+    const userId = req.auth!.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
-        // Create a default user if not exists for dev
-        const newUser = await prisma.user.create({
-            data: { id: userId, email: "dev@buildersite.com", name: "Dev User", passwordHash: "pwd_hash" }
-        });
-        userId = newUser.id;
+        res.status(401).json({ ok: false, error: "Usuario no válido" });
+        return;
     }
 
     const { name, subdomain } = parsed.data;
@@ -93,22 +102,44 @@ sitesRouter.post("/", async (req: AuthRequest, res: Response) => {
         data: {
             name,
             ...(typeof subdomain === "string" && subdomain.length > 0 ? { domain: subdomain } : {}),
-            userId: userId,
+            userId,
         },
     });
-    res.status(201).json({ ok: true, data: site });
+    const hadNoActiveSite = !req.auth?.siteId?.trim();
+    let token: string | undefined;
+    if (hadNoActiveSite) {
+        const u = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+        token = signToken({ userId, siteId: site.id, role: u?.role ?? "editor" });
+    }
+    res.status(201).json({ ok: true, data: site, ...(token ? { token } : {}) });
 });
 
 // ─── DELETE /api/sites/:id ────────────────────────────────────────────────────
 sitesRouter.delete("/:id", async (req: AuthRequest, res: Response) => {
+    const allowed = await assertSiteOwned(req.auth!.userId, req.params.id);
+    if (!allowed) {
+        res.status(404).json({ ok: false, error: "Site not found" });
+        return;
+    }
     await prisma.site.delete({ where: { id: req.params.id } });
     res.json({ ok: true, data: null });
 });
 
 // ─── GET /api/sites/workspace ────────────────────────────────────────────────
 sitesRouter.get("/workspace", async (req: AuthRequest, res: Response) => {
+    const userRow = await prisma.user.findUnique({
+        where: { id: req.auth!.userId },
+        select: { siteId: true },
+    });
+    const orFilter: Prisma.SiteWhereInput[] = [{ userId: req.auth!.userId }];
+    if (userRow?.siteId) {
+        orFilter.push({
+            id: userRow.siteId,
+            OR: [{ userId: null }, { userId: req.auth!.userId }],
+        });
+    }
     const ownedSites = await prisma.site.findMany({
-        where: { userId: req.auth!.userId },
+        where: { OR: orFilter },
         select: { id: true },
     });
     const siteIds = ownedSites.map((site) => site.id);
@@ -166,11 +197,8 @@ sitesRouter.put("/:id/workspace", async (req: AuthRequest, res: Response) => {
         return;
     }
 
-    const site = await prisma.site.findFirst({
-        where: { id: siteId, userId: req.auth!.userId },
-        select: { id: true },
-    });
-    if (!site) {
+    const allowed = await assertSiteOwned(req.auth!.userId, siteId);
+    if (!allowed) {
         res.status(404).json({ ok: false, error: "Site not found" });
         return;
     }
