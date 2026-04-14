@@ -2,13 +2,13 @@ import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 
 /**
- * En builds de producción en Vercel, exige VITE_API_URL para que el front no llame a /api
- * en el dominio del SPA (donde no existe el Express).
- * Solo lee `process.env` (variables del dashboard en Vercel), no `.env` local, para no falsear el check.
+ * En builds de producción en Vercel, avisa si falta VITE_API_URL (el front llamará a /api en el dominio
+ * del SPA y fallará en runtime). No aborta el build: muchos proyectos despliegan el front antes de tener la URL del API.
+ * Con VITE_FAIL_BUILD_WITHOUT_API_URL=1 el build falla de forma estricta (CI o política de equipo).
  *
  * @param mode Modo de Vite
  */
-function assertVercelProductionApiUrl(mode: string): void {
+function warnOrFailIfVercelMissingApiUrl(mode: string): void {
   if (mode !== "production" || !process.env.VERCEL) {
     return;
   }
@@ -16,18 +16,22 @@ function assertVercelProductionApiUrl(mode: string): void {
     return;
   }
   const url = (process.env.VITE_API_URL ?? "").trim();
-  if (url === "") {
-    throw new Error(
-      "[Buildev] En Vercel hace falta VITE_API_URL: URL pública del backend (sin / final), p. ej. https://tu-api.vercel.app. " +
-        "Añádela en el proyecto del front → Settings → Environment Variables y vuelve a desplegar. " +
-        "Opcional: VITE_ALLOW_EMPTY_API_URL=1 solo si sabes lo que haces (preview sin API).",
-    );
+  if (url !== "") {
+    return;
   }
+  const msg =
+    "[Buildev] Falta VITE_API_URL en el proyecto de Vercel (Settings → Environment Variables). " +
+    "Sin ella, el SPA usará rutas /api en este dominio y el API no estará disponible. " +
+    "Ejemplo: https://tu-api.vercel.app (sin / final). Redespliega tras añadirla.";
+  if ((process.env.VITE_FAIL_BUILD_WITHOUT_API_URL ?? "").trim() === "1") {
+    throw new Error(msg);
+  }
+  console.warn(msg);
 }
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  assertVercelProductionApiUrl(mode);
+  warnOrFailIfVercelMissingApiUrl(mode);
 
   const proxyTarget = (env.VITE_DEV_API_PROXY ?? "http://127.0.0.1:4000").trim().replace(/\/$/, "");
 
