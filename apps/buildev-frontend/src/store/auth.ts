@@ -147,7 +147,7 @@ export const useAuthStore = defineStore("auth", () => {
     }
 
     /**
-     * Guarda sesión tras OAuth (Google/GitHub) en la página de callback.
+     * Guarda sesión tras OAuth (GitHub) en la página de callback.
      *
      * @param data Token y metadatos del API
      */
@@ -168,24 +168,6 @@ export const useAuthStore = defineStore("auth", () => {
                 typeof json.error === "string"
                     ? json.error
                     : `HTTP ${res.status}. En el API: GITHUB_CLIENT_ID, GITHUB_CLIENT_SECRET y GITHUB_LOGIN_REDIRECT_URI o PUBLIC_APP_URL (misma URL que en la GitHub OAuth App).`;
-            throw new Error(detail);
-        }
-        window.location.assign(json.data.url);
-    }
-
-    async function startGoogleLogin(): Promise<void> {
-        const res = await fetch(`${apiBase}/api/auth/login/google/url`);
-        let json: { ok?: boolean; data?: { url?: string }; error?: string } = {};
-        try {
-            json = (await res.json()) as typeof json;
-        } catch {
-            throw new Error("Respuesta inválida del servidor.");
-        }
-        if (!json.ok || !json.data?.url) {
-            const detail =
-                typeof json.error === "string"
-                    ? json.error
-                    : `HTTP ${res.status}. Configura GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET y en Google Cloud Console la URI de redirección autorizada (GOOGLE_LOGIN_REDIRECT_URI, p. ej. …/auth/google).`;
             throw new Error(detail);
         }
         window.location.assign(json.data.url);
@@ -214,7 +196,6 @@ export const useAuthStore = defineStore("auth", () => {
         fetchGitHubStatus,
         startGitHubOAuth,
         startGitHubLogin,
-        startGoogleLogin,
         persistSession,
         setGitHubLinked,
     };

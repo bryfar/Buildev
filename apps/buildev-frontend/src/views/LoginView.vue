@@ -113,41 +113,14 @@
           <button type="button" @click="toggleMode">{{ isRegister ? "Inicia sesión" : "Regístrate" }}</button>
         </p>
 
-        <div class="divider">o con Google / GitHub</div>
+        <div class="divider">o con GitHub</div>
 
         <div class="sso">
           <button
             type="button"
             class="sso-btn"
-            title="Google"
-            :disabled="ssoBusy || !oauthReady.google || Boolean(oauthFetchError)"
-            aria-label="Iniciar sesión con Google"
-            @click="onGoogle"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-              <path
-                fill="#4285F4"
-                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-              />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="sso-btn"
             title="GitHub"
-            :disabled="ssoBusy || !oauthReady.github || Boolean(oauthFetchError)"
+            :disabled="ssoBusy || !oauthReady || Boolean(oauthFetchError)"
             aria-label="Iniciar sesión con GitHub"
             @click="onGithub"
           >
@@ -159,10 +132,7 @@
           </button>
         </div>
         <p v-if="oauthFetchError" class="oauth-hint err">{{ oauthFetchError }}</p>
-        <template v-else>
-          <p v-if="oauthHints.google" class="oauth-hint">{{ oauthHints.google }}</p>
-          <p v-if="oauthHints.github" class="oauth-hint">{{ oauthHints.github }}</p>
-        </template>
+        <p v-else-if="oauthHint" class="oauth-hint">{{ oauthHint }}</p>
       </div>
 
       <aside class="hero" aria-hidden="true">
@@ -243,8 +213,8 @@ const ssoBusy = ref(false);
 const error = ref<string | null>(null);
 const rememberMe = ref(true);
 const form = ref({ name: "", email: "", password: "", siteName: "" });
-const oauthReady = ref({ github: false, google: false });
-const oauthHints = ref<{ github: string | null; google: string | null }>({ github: null, google: null });
+const oauthReady = ref(false);
+const oauthHint = ref<string | null>(null);
 const oauthFetchError = ref<string | null>(null);
 
 const LOGIN_HTML_CLASS = "login-fullpage-active";
@@ -253,7 +223,7 @@ onMounted(async () => {
   document.documentElement.classList.add(LOGIN_HTML_CLASS);
   document.body.classList.add(LOGIN_HTML_CLASS);
   oauthFetchError.value = null;
-  oauthHints.value = { github: null, google: null };
+  oauthHint.value = null;
   const endpoint = `${apiBase}/api/auth/oauth/login-ready`;
   try {
     const res = await fetch(endpoint);
@@ -263,8 +233,7 @@ onMounted(async () => {
       error?: string;
       data?: {
         github?: boolean;
-        google?: boolean;
-        hints?: { github?: string | null; google?: string | null };
+        hints?: { github?: string | null };
       };
     };
     try {
@@ -287,7 +256,7 @@ onMounted(async () => {
             : " Comprueba que el proceso en ese puerto sea este backend (p. ej. GET /api/health debe devolver JSON) y que no haya otro servicio usando el mismo puerto.";
         oauthFetchError.value = `El API respondió HTTP ${res.status} pero el cuerpo no es JSON. Destino: ${describeApiFetchTarget(apiBase)}.${hint ? ` Vista previa: «${hint}».` : ""}${portHint}`;
       }
-      oauthReady.value = { github: false, google: false };
+      oauthReady.value = false;
       return;
     }
     if (!res.ok) {
@@ -295,20 +264,14 @@ onMounted(async () => {
       oauthFetchError.value = apiErr
         ? `El API respondió ${res.status}: ${apiErr}. Destino: ${describeApiFetchTarget(apiBase)}.`
         : `El API respondió ${res.status}. Destino: ${describeApiFetchTarget(apiBase)}. Arranca el backend y revisa puerto/proxy.`;
-      oauthReady.value = { github: false, google: false };
+      oauthReady.value = false;
       return;
     }
     if (json.ok && json.data) {
-      oauthReady.value = {
-        github: Boolean(json.data.github),
-        google: Boolean(json.data.google),
-      };
+      oauthReady.value = Boolean(json.data.github);
       const h = json.data.hints;
       if (h && typeof h === "object") {
-        oauthHints.value = {
-          github: typeof h.github === "string" ? h.github : null,
-          google: typeof h.google === "string" ? h.google : null,
-        };
+        oauthHint.value = typeof h.github === "string" ? h.github : null;
       }
     }
   } catch (e: unknown) {
@@ -322,7 +285,7 @@ onMounted(async () => {
         ? " En Vercel, define VITE_API_URL en el proyecto del front con la URL pública del backend y redespliega."
         : " Revisa VITE_API_URL y que el backend sea accesible desde el navegador (CORS, HTTPS).";
     oauthFetchError.value = `No se pudo contactar al API (${reason}). Destino: ${dest}.${devExtra}`;
-    oauthReady.value = { github: false, google: false };
+    oauthReady.value = false;
   }
   const saved = localStorage.getItem("bs_remember_email");
   if (saved) form.value.email = saved;
@@ -382,16 +345,6 @@ async function onGithub() {
   }
 }
 
-async function onGoogle() {
-  ssoBusy.value = true;
-  error.value = null;
-  try {
-    await auth.startGoogleLogin();
-  } catch (e: unknown) {
-    error.value = e instanceof Error ? e.message : "No se pudo abrir Google";
-    ssoBusy.value = false;
-  }
-}
 </script>
 
 <style scoped src="./LoginView.css"></style>

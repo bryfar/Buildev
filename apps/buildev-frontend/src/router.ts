@@ -43,11 +43,6 @@ const routes = [
     meta: { public: true },
   },
   {
-    path: "/auth/google",
-    component: () => import("./views/OAuthLoginCallbackView.vue"),
-    meta: { public: true },
-  },
-  {
     path: "/invite",
     component: () => import("./views/InviteAcceptView.vue"),
     meta: { public: true },
