@@ -534,6 +534,26 @@ op insert --parent "$BTN" '{"type":"text","content":"Sign In","fontSize":16,"fon
 op design:refine --root-id "$ROOT"
 ```
 
+## Integration Ecosystem
+
+Buildev design works alongside 11 companion skills that extend its capabilities:
+
+| Skill | File | Purpose |
+|-------|------|---------|
+| **Goose** | `skills/goose-orchestrator/SKILL.md` | Multi-agent orchestration for parallel design pipelines |
+| **Deep Agents** | `skills/deep-agents/SKILL.md` | Context compression for long design sessions |
+| **Eval-View** | `skills/eval-view/SKILL.md` | Visual regression baselines (CI gate) |
+| **Lastest** | `skills/lastest/SKILL.md` | Playwright visual QA + WCAG a11y audits |
+| **Graphify** | `skills/graphify/SKILL.md` | Knowledge graph for design → code traceability |
+| **Awesome Claude Design** | `skills/awesome-claude-design/SKILL.md` | 68 DESIGN.md layout templates |
+| **Impeccable** | `skills/impeccable/SKILL.md` | 44 deterministic design system detectors |
+| **Taste Skill** | `skills/taste-skill/SKILL.md` | Anti-slop aesthetic rules |
+| **Superpowers** | `skills/superpowers/SKILL.md` | PLAN→EXECUTE→VERIFY→REVIEW→SHIP methodology |
+| **CodeBurn** | `skills/codeburn/SKILL.md` | Token usage and cost observability |
+| **Browser Harness** | `skills/browser-harness/SKILL.md` | CDP-based browser QA for codegen output |
+
+When building production designs, chain this skill with the QA integrations: design → `impeccable` validate → `taste-skill` aesthetic check → `eval-view` regression → `lastest` a11y → deploy.
+
 ## DSL Example — Landing Page
 
 DSL is suitable for simpler structures. **Avoid inline `children`** — insert parent and children as separate operations.
