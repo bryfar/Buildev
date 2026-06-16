@@ -1,0 +1,21 @@
+{
+  "name": "buildev-skills",
+  "description": "Design skill for Buildev — op CLI, batch DSL, MCP tools, PenNode schema, and UI design best practices",
+  "version": "0.7.0",
+  "author": {
+    "name": "bryfar",
+    "email": "bryfar@example.com"
+  },
+  "homepage": "https://github.com/bryfar/buildev-skills",
+  "repository": "https://github.com/bryfar/buildev-skills",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "ui",
+    "vector",
+    "buildev",
+    "cli",
+    "mcp",
+    "dsl"
+  ]
+}

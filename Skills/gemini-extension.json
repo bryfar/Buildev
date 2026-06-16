@@ -1,0 +1,6 @@
+{
+  "name": "buildev-skills",
+  "description": "Design skill for Buildev — op CLI, batch DSL, MCP tools, and UI best practices",
+  "version": "0.7.0",
+  "contextFileName": "GEMINI.md"
+}
