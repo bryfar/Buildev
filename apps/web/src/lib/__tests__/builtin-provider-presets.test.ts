@@ -288,4 +288,21 @@ describe('builtin provider presets', () => {
     expect(migrated.preset).toBe('minimax');
     expect(migrated.baseURL).toBe('https://api.minimax.io/anthropic');
   });
+
+  it('coerces API format type when URL migration changes preset (stale anthropic + OpenAI URL)', () => {
+    const fixed = canonicalizeBuiltinProviderConfig({
+      id: 'bp-mismatch',
+      displayName: 'Mis-tagged',
+      type: 'anthropic',
+      apiKey: 'sk-test',
+      model: 'gpt-5.4',
+      preset: 'anthropic',
+      baseURL: 'https://api.openai.com/v1',
+      enabled: true,
+    });
+
+    expect(fixed.preset).toBe('openai');
+    expect(fixed.type).toBe('openai-compat');
+    expect(fixed.baseURL).toBe('https://api.openai.com/v1');
+  });
 });

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Loader2,
@@ -96,6 +96,7 @@ export function BuiltinProviderForm({
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [modelLoading, setModelLoading] = useState(false);
   const [modelError, setModelError] = useState<string | null>(null);
+  const modelAnchorRef = useRef<HTMLDivElement>(null);
 
   const handlePresetChange = useCallback(
     (newPreset: BuiltinProviderPreset) => {
@@ -135,20 +136,21 @@ export function BuiltinProviderForm({
       setShowModelDropdown(true);
       return;
     }
-    const cfg = BUILTIN_PROVIDER_PRESETS[preset];
     const url =
       preset === 'custom'
         ? baseURL.trim()
-        : cfg.regions
-          ? cfg.regions[region].baseURL
-          : cfg.baseURL;
+        : getBaseURLForFormat(preset, apiFormat, region) ?? baseURL.trim();
     if (!url) {
       setModelError(t('builtin.searchError'));
       return;
     }
     setModelLoading(true);
     setModelError(null);
-    const result = await fetchProviderModels(url, apiKey.trim() || undefined);
+    const result = await fetchProviderModels(
+      url,
+      apiKey.trim() || undefined,
+      apiFormat,
+    );
     setModelLoading(false);
     if (result.error) {
       setModelError(result.error);
@@ -160,7 +162,7 @@ export function BuiltinProviderForm({
       setModelList(result.models);
       setShowModelDropdown(true);
     }
-  }, [preset, baseURL, apiKey, region, t]);
+  }, [preset, baseURL, apiKey, region, apiFormat, t]);
 
   const handleModelSelect = useCallback((model: { id: string; name: string }) => {
     setModelName(model.id);
@@ -179,7 +181,7 @@ export function BuiltinProviderForm({
     'w-full h-8 px-2.5 text-[12px] bg-background text-foreground rounded-md border border-input focus:border-ring focus:ring-1 focus:ring-ring/20 outline-none transition-all';
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden">
+    <div className="rounded-xl border border-border">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-2.5 bg-secondary/30 border-b border-border">
         <div className="h-5 w-5 rounded-md bg-primary/10 flex items-center justify-center">
@@ -269,7 +271,7 @@ export function BuiltinProviderForm({
 
         {/* Model */}
         <Field label={t('builtin.model')}>
-          <div className="relative">
+          <div className="relative" ref={modelAnchorRef}>
             <input
               value={modelName}
               onChange={(e) => setModelName(e.target.value)}
@@ -295,6 +297,7 @@ export function BuiltinProviderForm({
             {showModelDropdown && modelList.length > 0 && (
               <ModelSearchDropdown
                 models={modelList}
+                anchorRef={modelAnchorRef}
                 onSelect={handleModelSelect}
                 onClose={() => setShowModelDropdown(false)}
               />

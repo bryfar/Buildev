@@ -54,6 +54,7 @@ const en = {
   'topbar.fullscreen': 'Fullscreen',
   'topbar.exitFullscreen': 'Exit fullscreen',
   'topbar.edited': '— Edited',
+  'topbar.renameProjectTitle': 'Double-click to rename',
   'topbar.closeConfirmMessage': 'Do you want to save changes before closing?',
   'topbar.closeConfirmDetail': "Your changes will be lost if you don't save them.",
   'topbar.dontSave': "Don't Save",
@@ -1132,6 +1133,7 @@ const en = {
   'projectFlow.workspaces.newNamePlaceholder': 'e.g. Client A',
   'projectFlow.workspaces.scopeAll': 'All workspaces',
   'projectFlow.workspaces.projectCount': '{{count}} projects',
+  'projectFlow.workspaces.enterWorkspace': 'Open workspace',
 
   'projectFlow.workspaceDetail.subtitle': 'Projects in this workspace are saved .op files on your machine (desktop).',
   'projectFlow.workspaceDetail.newProject': 'New project',
@@ -1143,6 +1145,9 @@ const en = {
   'projectFlow.workspaceDetail.addFromDrafts': 'Add from drafts',
   'projectFlow.workspaceDetail.pickDraft': 'Choose a draft project',
   'projectFlow.workspaceDetail.emptyProjects': 'No projects in this workspace yet.',
+  'projectFlow.workspaceDetail.emptyHeroTitle': 'Create your first project',
+  'projectFlow.workspaceDetail.emptyHeroDescription':
+    'Use New project to start a design. After you save on desktop, the file stays grouped under this workspace.',
   'projectFlow.workspaceDetail.moveToDrafts': 'Move to drafts',
   'projectFlow.workspaceDetail.notInRecents': 'Not in recent files list',
   'projectFlow.workspaceDetail.missing': 'This workspace no longer exists.',
@@ -1168,6 +1173,10 @@ const en = {
   'projectFlow.projects.sessionRowSubtitle': 'Current session',
 
   'projectFlow.localProjects.openUnavailableHint': 'Open from disk is available in the desktop app after the file is saved with a path.',
+
+  'projectFlow.move.trigger': 'Move to…',
+  'projectFlow.move.toDrafts': 'Drafts',
+  'projectFlow.move.menuAria': 'Move project to workspace or drafts',
 
   'projectFlow.library.title': 'Design system libraries',
   'projectFlow.library.subtitle':
@@ -1215,6 +1224,13 @@ const en = {
   'projectFlow.wizardModal.reviewName': 'Project name',
   'projectFlow.wizardModal.reviewSubtitle':
     'Confirm the details below. You can still go back to adjust stack or template.',
+  'projectFlow.wizardModal.quickSetupTitle': 'New project',
+  'projectFlow.wizardModal.quickSetupSubtitle':
+    'Starting point: {{mode}} · Set stacks and CMS before opening the editor.',
+  'projectFlow.wizardModal.ideStacksHint': 'Frontend stacks match the in-app IDE (virtual files and codegen).',
+  'projectFlow.wizardModal.cmsProjectLabel': 'CMS project',
+  'projectFlow.wizardModal.cmsProjectHint':
+    'Adds editorial pages and a default CMS provider for codegen metadata.',
   'projectFlow.wizardModal.architect.ai.title': 'AI Assistant',
   'projectFlow.wizardModal.architect.ai.description': 'Conversational building with real-time architecting.',
   'projectFlow.wizardModal.architect.figma.title': 'Figma import',

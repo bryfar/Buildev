@@ -39,6 +39,8 @@ export function DraftsPage() {
   const navigate = useNavigate();
   const navSections = useDashboardNavSections();
   const assignmentByProject = useWorkspaceRegistryStore((s) => s.assignmentByProject);
+  const workspaces = useWorkspaceRegistryStore((s) => s.workspaces);
+  const assignProjectToWorkspace = useWorkspaceRegistryStore((s) => s.assignProjectToWorkspace);
 
   const projectMeta = useDocumentStore((s) => s.document.projectMeta);
   const fileName = useDocumentStore((s) => s.fileName);
@@ -59,6 +61,11 @@ export function DraftsPage() {
       ? `path:${normalizedFilePath}`
       : SESSION_PROJECT_VALUE
     : null;
+
+  const workspacePickerRows = useMemo(
+    () => workspaces.map((w) => ({ id: w.id, name: w.name })),
+    [workspaces],
+  );
 
   const formatRelative = useCallback(
     (ts: number) => {
@@ -111,6 +118,16 @@ export function DraftsPage() {
             const ok = await tryOpenRecentProjectFile(r);
             if (ok) void navigate({ to: '/editor' });
           },
+          moveMenu:
+            workspacePickerRows.length > 0
+              ? {
+                  currentWorkspaceId: null,
+                  workspaces: workspacePickerRows,
+                  onMoveTo: (target) => {
+                    if (target !== null) assignProjectToWorkspace(id, target);
+                  },
+                }
+              : undefined,
         },
       });
     }
@@ -138,6 +155,16 @@ export function DraftsPage() {
             }
             void navigate({ to: '/editor' });
           },
+          moveMenu:
+            workspacePickerRows.length > 0
+              ? {
+                  currentWorkspaceId: null,
+                  workspaces: workspacePickerRows,
+                  onMoveTo: (target) => {
+                    if (target !== null) assignProjectToWorkspace(sessionId, target);
+                  },
+                }
+              : undefined,
         },
       });
     }
@@ -165,6 +192,8 @@ export function DraftsPage() {
     sortField,
     sortOrder,
     t,
+    workspacePickerRows,
+    assignProjectToWorkspace,
   ]);
 
   const gridItems: LocalProjectGridItem[] = useMemo(() => {

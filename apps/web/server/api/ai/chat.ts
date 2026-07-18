@@ -1105,7 +1105,46 @@ function streamViaBuiltin(body: ChatBody) {
           destroyProvider(builtinProvider);
         }
       } catch (error) {
-        const content = formatFetchError(error);
+        // Some HTTP client libraries throw opaque `HTTPError` instances where
+        // `message` is just "HTTPError". Try to surface status, url, and a
+        // small response body preview when available.
+        let content = formatFetchError(error);
+        try {
+          if (error && typeof error === 'object') {
+            const name = (error as any).name;
+            const msg = (error as any).message;
+            const status = (error as any).status ?? (error as any).response?.status;
+            const url = (error as any).url ?? (error as any).response?.url;
+            const response = (error as any).response;
+
+            const parts: string[] = [];
+            if (typeof name === 'string' && name.length > 0) {
+              parts.push(name);
+            }
+            if (typeof msg === 'string' && msg.length > 0 && msg !== name) {
+              parts.push(msg);
+            }
+            if (typeof status === 'number') {
+              parts.push(`HTTP ${status}`);
+            }
+            if (typeof url === 'string' && url.length > 0) {
+              parts.push(url);
+            }
+
+            let bodyPreview = '';
+            if (response && typeof response.text === 'function') {
+              const text = await response.text().catch(() => '');
+              if (text) bodyPreview = text.slice(0, 400);
+            }
+
+            const pretty = parts.filter(Boolean).join(' — ');
+            if (pretty && pretty !== content) {
+              content = bodyPreview ? `${pretty} — ${bodyPreview}` : pretty;
+            }
+          }
+        } catch {
+          /* ignore enrichment failures */
+        }
         controller.enqueue(
           encoder.encode(`data: ${JSON.stringify({ type: 'error', content })}\n\n`),
         );

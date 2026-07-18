@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import type { BuiltinProviderPreset } from '@/stores/agent-settings-store';
 
@@ -59,12 +60,13 @@ export const BUILTIN_MODEL_LISTS: Partial<
 export async function fetchProviderModels(
   baseURL: string,
   apiKey?: string,
+  apiFormat: 'anthropic' | 'openai-compat' = 'openai-compat',
 ): Promise<{ models: Array<{ id: string; name: string }>; error?: string }> {
   try {
     const res = await fetch('/api/ai/provider-models', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ baseURL, apiKey }),
+      body: JSON.stringify({ baseURL, apiKey, apiFormat }),
     });
     if (!res.ok) return { models: [], error: `Server error ${res.status}` };
     return await res.json();
@@ -74,49 +76,95 @@ export async function fetchProviderModels(
 }
 
 /* ---------- Model Search Dropdown ---------- */
+const MODEL_DROPDOWN_Z = 220;
+
 export default function ModelSearchDropdown({
   models,
   onSelect,
   onClose,
+  anchorRef,
 }: {
   models: Array<{ id: string; name: string }>;
   onSelect: (model: { id: string; name: string }) => void;
   onClose: () => void;
+  anchorRef: RefObject<HTMLDivElement | null>;
 }) {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ top: 0, left: 0, width: 280, maxListHeight: 192 });
 
   const filtered = models.filter((m) => {
     const q = filter.toLowerCase();
     return m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q);
   });
 
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    const gap = 6;
+    const edge = 10;
+    const filterBar = 44;
+    const maxPanel = 280;
+    let top = rect.bottom + gap;
+    let maxList = Math.min(192, window.innerHeight - top - edge - filterBar);
+    if (maxList < 96 && rect.top > window.innerHeight - rect.bottom) {
+      maxList = Math.min(192, rect.top - gap - edge - filterBar);
+      top = rect.top - gap - filterBar - maxList;
+    }
+    maxList = Math.max(64, maxList);
+    setBox({
+      top: Math.max(edge, top),
+      left: Math.max(edge, rect.left),
+      width: Math.max(220, rect.width),
+      maxListHeight: maxList,
+    });
+  }, [anchorRef, models.length]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (listRef.current && !listRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      const node = e.target as Node;
+      if (listRef.current?.contains(node)) return;
+      if (anchorRef.current?.contains(node)) return;
+      onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
+  }, [onClose, anchorRef]);
+
+  useEffect(() => {
+    const cancel = () => onClose();
+    window.addEventListener('scroll', cancel, true);
+    window.addEventListener('resize', cancel);
+    return () => {
+      window.removeEventListener('scroll', cancel, true);
+      window.removeEventListener('resize', cancel);
+    };
   }, [onClose]);
 
-  return (
+  const panel = (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 right-0 mb-1 rounded-md border border-border bg-popover shadow-md z-10 overflow-hidden"
+      style={{
+        position: 'fixed',
+        top: box.top,
+        left: box.left,
+        width: box.width,
+        zIndex: MODEL_DROPDOWN_Z,
+      }}
+      className="flex max-h-[min(280px,calc(100vh-24px))] flex-col overflow-hidden rounded-md border border-border bg-popover shadow-md"
     >
-      <div className="p-1.5 border-b border-border">
+      <div className="shrink-0 border-b border-border p-1.5">
         <input
           autoFocus
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder={t('builtin.filterModels')}
-          className="w-full h-7 px-2 text-[12px] bg-card text-foreground rounded border border-input focus:border-ring outline-none transition-colors"
+          className="h-7 w-full rounded border border-input bg-card px-2 text-[12px] text-foreground outline-none transition-colors focus:border-ring"
         />
       </div>
-      <div className="max-h-48 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto" style={{ maxHeight: box.maxListHeight }}>
         {filtered.length === 0 && (
           <div className="px-3 py-4 text-center text-[11px] text-muted-foreground">
             {t('builtin.noModels')}
@@ -125,19 +173,23 @@ export default function ModelSearchDropdown({
         {filtered.map((m) => (
           <button
             key={m.id}
+            type="button"
             onClick={() => {
               onSelect(m);
               onClose();
             }}
-            className="w-full text-left px-3 py-1.5 text-[12px] text-foreground hover:bg-secondary/50 transition-colors flex flex-col"
+            className="flex w-full flex-col px-3 py-1.5 text-left text-[12px] text-foreground transition-colors hover:bg-secondary/50"
           >
-            <span className="font-medium truncate">{m.name !== m.id ? m.name : m.id}</span>
+            <span className="truncate font-medium">{m.name !== m.id ? m.name : m.id}</span>
             {m.name !== m.id && (
-              <span className="text-[10px] text-muted-foreground font-mono truncate">{m.id}</span>
+              <span className="truncate font-mono text-[10px] text-muted-foreground">{m.id}</span>
             )}
           </button>
         ))}
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(panel, document.body);
 }

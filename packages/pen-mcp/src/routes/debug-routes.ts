@@ -5,7 +5,7 @@ import { handleScreenshot, type DebugScreenshotParams } from '../tools/debug-scr
 
 /**
  * DEBUG MCP tools — only exposed when the server is started with the
- * `--debug` flag or `OPENPENCIL_DEBUG_TOOLS=1` environment variable.
+ * `--debug` flag or `BUILDEV_DEBUG_TOOLS=1` / `OPENPENCIL_DEBUG_TOOLS=1` environment variable.
  *
  * These tools are for pen-ai-skills development and diagnostics. They MUST
  * NOT be exposed to production MCP clients.

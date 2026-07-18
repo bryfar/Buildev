@@ -1,25 +1,8 @@
 import { defineEventHandler, readBody, setResponseHeaders, getQuery, createError } from 'h3';
-import {
-  createAnthropicProvider,
-  createOpenAICompatProvider,
-  createToolRegistry,
-  registerToolSchema,
-  createQueryEngine,
-  seedMessages,
-  submitMessage,
-  nextEvent,
-  resolveToolResult,
-  createTeam,
-  runTeam,
-  addTeamMember,
-  resolveTeamToolResult,
-  teamRegisterDelegate,
-  runTeamMember,
-  destroyIterator,
-  resolveMemberToolResult,
-  seedTeamMessages,
-} from '@buildev/agent-native';
 import { resolveSkills } from '@buildev/pen-ai-skills';
+import { loadAgentNative } from '../../utils/agent-native-loader';
+
+type AgentNativeModule = Awaited<ReturnType<typeof loadAgentNative>>;
 import type { Phase } from '@buildev/pen-ai-skills';
 import type { AuthLevel } from '../../../src/types/agent';
 import {
@@ -302,6 +285,7 @@ function zigEventToSSE(raw: string): string {
 /** Run a delegated member asynchronously — does NOT block the caller.
  *  Only called for native agent sessions (team mode). */
 async function runDelegateMember(
+  native: AgentNativeModule,
   session: NativeAgentSession,
   body: AgentBody,
   controller: ReadableStreamDefaultController,
@@ -310,6 +294,7 @@ async function runDelegateMember(
   memberId: string,
   task: string,
 ) {
+  const { runTeamMember, nextEvent, destroyIterator, resolveTeamToolResult } = native;
   // Resolve task-specific skills based on member role
   const memberRole = session.memberRoles.get(memberId);
   let enrichedTask = task;
@@ -393,6 +378,7 @@ async function runDelegateMember(
 }
 
 function createProviderHandle(
+  native: AgentNativeModule,
   providerType: 'anthropic' | 'openai-compat',
   apiKey: string,
   model: string,
@@ -400,8 +386,8 @@ function createProviderHandle(
   maxContextTokens?: number,
 ) {
   return providerType === 'anthropic'
-    ? createAnthropicProvider(apiKey, model, baseURL, maxContextTokens)
-    : createOpenAICompatProvider(
+    ? native.createAnthropicProvider(apiKey, model, baseURL, maxContextTokens)
+    : native.createOpenAICompatProvider(
         apiKey,
         requireOpenAICompatBaseURL(baseURL),
         model,
@@ -440,16 +426,17 @@ export default defineEventHandler(async (event) => {
         return { ok: true };
       }
 
+      const native = await loadAgentNative();
       const resultJson = JSON.stringify(body.result);
       // Per-toolCallId routing: check if this tool belongs to a member
       const memberId = session.toolOwners?.get(body.toolCallId);
       if (memberId && session.team) {
-        resolveMemberToolResult(session.team, memberId, body.toolCallId, resultJson);
+        native.resolveMemberToolResult(session.team, memberId, body.toolCallId, resultJson);
         session.toolOwners.delete(body.toolCallId);
       } else if (session.team) {
-        resolveTeamToolResult(session.team, body.toolCallId, resultJson);
+        native.resolveTeamToolResult(session.team, body.toolCallId, resultJson);
       } else if (session.engine) {
-        resolveToolResult(session.engine, body.toolCallId, resultJson);
+        native.resolveToolResult(session.engine, body.toolCallId, resultJson);
       }
       session.toolNames.delete(body.toolCallId);
     } catch {
@@ -466,8 +453,8 @@ export default defineEventHandler(async (event) => {
     if (sid) {
       const session = agentSessions.get(sid);
       if (session) {
-        abortSession(session);
-        cleanup(session);
+        await abortSession(session);
+        await cleanup(session);
         agentSessions.delete(sid);
       }
     }
@@ -833,7 +820,26 @@ export default defineEventHandler(async (event) => {
   });
 
   // providerType is narrowed: 'acp' returned early above
+  const native = await loadAgentNative();
+  const {
+    createToolRegistry,
+    registerToolSchema,
+    createQueryEngine,
+    seedMessages,
+    submitMessage,
+    nextEvent,
+    resolveToolResult,
+    createTeam,
+    runTeam,
+    addTeamMember,
+    resolveTeamToolResult,
+    teamRegisterDelegate,
+    runTeamMember,
+    seedTeamMessages,
+  } = native;
+
   const provider = createProviderHandle(
+    native,
     body.providerType as 'anthropic' | 'openai-compat',
     body.apiKey,
     body.model,
@@ -878,6 +884,7 @@ export default defineEventHandler(async (event) => {
     if (normalizedMembers.length) {
       for (const m of normalizedMembers) {
         const memberProvider = createProviderHandle(
+          native,
           m.providerType,
           m.apiKey,
           m.model,
@@ -1022,6 +1029,7 @@ export default defineEventHandler(async (event) => {
 
                 // Create provider (use member model or lead's)
                 const mProvider = createProviderHandle(
+                  native,
                   body.providerType as 'anthropic' | 'openai-compat',
                   body.apiKey,
                   memberModel ?? body.model,
@@ -1092,6 +1100,7 @@ export default defineEventHandler(async (event) => {
                   // waiting_for_external_tools until ALL delegate results are resolved.
                   // By not awaiting, multiple delegates run concurrently.
                   runDelegateMember(
+                    native,
                     session,
                     body,
                     controller,
@@ -1171,7 +1180,7 @@ export default defineEventHandler(async (event) => {
       } finally {
         clearInterval(pingTimer);
         agentSessions.delete(body.sessionId);
-        cleanup(session);
+        await cleanup(session);
         try {
           controller.close();
         } catch {

@@ -14,7 +14,7 @@ export default function X() { return null; }
     }
   });
 
-  it('parses legacy @openpencil-frame-meta line', () => {
+  it('parses legacy alternate @-frame-meta line', () => {
     const src = `// @openpencil-frame-meta {"frameId":"root-frame","width":400,"height":300}
 export default function X() { return null; }
 `;

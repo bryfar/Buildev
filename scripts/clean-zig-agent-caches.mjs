@@ -1,6 +1,6 @@
 /**
  * Deletes Zig build caches used by agent:build (Windows and repo-local defaults).
- * Run from openpencil root: bun run agent:build:clean
+ * Run from repo root: bun run agent:build:clean
  */
 import { existsSync, rmSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
@@ -14,11 +14,17 @@ const pinnedFlat = join(root, '.zig-0.15.2', 'zig.exe');
 const dirs = [
   join(root, '.zig-0.15.2', 'zig-build-project-cache'),
   join(root, '.zig-0.15.2', 'zig-build-global-cache'),
+  join(root, '.zig-buildev-project-cache'),
+  join(root, '.zig-buildev-global-cache'),
   join(root, '.zig-openpencil-project-cache'),
   join(root, '.zig-openpencil-global-cache'),
   join(root, 'packages', 'agent-native', '.zig-cache'),
+  resolve(homedir(), '.buildev-zig-project-cache'),
+  resolve(homedir(), '.buildev-zig-global-cache'),
   resolve(homedir(), '.openpencil-zig-project-cache'),
   resolve(homedir(), '.openpencil-zig-global-cache'),
+  resolve(tmpdir(), 'buildev-zig-project-cache'),
+  resolve(tmpdir(), 'buildev-zig-global-cache'),
   resolve(tmpdir(), 'openpencil-zig-project-cache'),
   resolve(tmpdir(), 'openpencil-zig-global-cache'),
 ];

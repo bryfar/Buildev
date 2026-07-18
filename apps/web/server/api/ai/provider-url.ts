@@ -65,6 +65,18 @@ export function buildProviderModelsURL(baseURL: string): string {
 }
 
 /**
+ * Anthropic-style model list: GET `/v1/models` off the API root.
+ * If `baseURL` already ends with `/v1` (or `/v3`, etc.), append `/models` only.
+ */
+export function buildAnthropicModelsURL(baseURL: string): string {
+  const n = normalizeBaseURL(baseURL);
+  if (/\/v\d+$/i.test(n)) {
+    return `${n}/models`;
+  }
+  return `${n}/v1/models`;
+}
+
+/**
  * Node's `fetch` (undici) collapses every network-level failure — DNS, TLS,
  * refused connection, timeout — into a single opaque `TypeError: fetch failed`.
  * The real reason lives on `error.cause` as a SystemError with `code`/`syscall`/

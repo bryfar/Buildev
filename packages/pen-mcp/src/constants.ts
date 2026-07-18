@@ -3,7 +3,7 @@ export const MCP_DEFAULT_PORT = 3100;
 
 // Port file directory for MCP sync discovery
 export const PORT_FILE_DIR_NAME = '.buildev';
-/** Legacy directory from OpenPencil; still read for port discovery during upgrades. */
+/** Legacy port-file directory on disk (still scanned for upgrades). */
 export const PORT_FILE_LEGACY_DIR_NAME = '.openpencil';
 export const PORT_FILE_NAME = '.port';
 

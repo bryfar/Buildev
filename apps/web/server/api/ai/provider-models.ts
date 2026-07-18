@@ -1,9 +1,16 @@
 import { defineEventHandler, readBody } from 'h3';
-import { buildProviderModelsURL, formatFetchError, normalizeOptionalBaseURL } from './provider-url';
+import {
+  buildAnthropicModelsURL,
+  buildProviderModelsURL,
+  formatFetchError,
+  normalizeOptionalBaseURL,
+} from './provider-url';
 
 interface ProviderModelsBody {
   baseURL: string;
   apiKey?: string;
+  /** Default: openai-compat (Bearer + /models on OpenAI-compat root). */
+  apiFormat?: 'anthropic' | 'openai-compat';
 }
 
 interface ModelEntry {
@@ -14,23 +21,32 @@ interface ModelEntry {
 /**
  * POST /api/ai/provider-models
  * Proxies model list requests to external providers to avoid CORS issues.
- * Body: { baseURL: string, apiKey?: string }
+ * Body: { baseURL: string, apiKey?: string, apiFormat?: 'anthropic' | 'openai-compat' }
  * Returns: { models: Array<{ id: string, name: string }> }
  */
 export default defineEventHandler(async (event) => {
   const body = await readBody<ProviderModelsBody>(event);
   const normalizedBaseURL = normalizeOptionalBaseURL(body?.baseURL);
   const apiKey = body?.apiKey;
+  const apiFormat = body?.apiFormat === 'anthropic' ? 'anthropic' : 'openai-compat';
   if (!normalizedBaseURL) {
     return { models: [], error: 'baseURL is required' };
   }
 
-  const url = buildProviderModelsURL(normalizedBaseURL);
+  const url =
+    apiFormat === 'anthropic'
+      ? buildAnthropicModelsURL(normalizedBaseURL)
+      : buildProviderModelsURL(normalizedBaseURL);
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
   if (apiKey) {
-    headers.Authorization = `Bearer ${apiKey}`;
+    if (apiFormat === 'anthropic') {
+      headers['x-api-key'] = apiKey;
+      headers['anthropic-version'] = '2023-06-01';
+    } else {
+      headers.Authorization = `Bearer ${apiKey}`;
+    }
   }
 
   try {
@@ -55,10 +71,16 @@ export default defineEventHandler(async (event) => {
 
     const models: ModelEntry[] = (rawModels as Array<Record<string, unknown>>)
       .filter((m) => m.id)
-      .map((m) => ({
-        id: String(m.id),
-        name: (typeof m.name === 'string' ? m.name : '') || String(m.id),
-      }))
+      .map((m) => {
+        const display =
+          (typeof m.name === 'string' && m.name) ||
+          (typeof m.display_name === 'string' && m.display_name) ||
+          '';
+        return {
+          id: String(m.id),
+          name: display || String(m.id),
+        };
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return { models };

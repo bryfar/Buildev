@@ -109,6 +109,8 @@ interface DocumentStoreState {
   newDocument: () => void;
   loadCloudDocument: (siteId: string) => Promise<boolean>;
   markClean: () => void;
+  /** Updates `fileName` (and `projectMeta.projectName` when present). Marks dirty. */
+  setDocumentDisplayName: (rawName: string) => void;
   setFileHandle: (handle: FileSystemFileHandle | null) => void;
   setSaveDialogOpen: (open: boolean) => void;
   setProjectMetadata: (meta: ProjectMetadata | null) => void;
@@ -262,6 +264,40 @@ export const useDocumentStore = create<DocumentStoreState>((set, get) => ({
   },
 
   markClean: () => set({ isDirty: false }),
+
+  setDocumentDisplayName: (rawName) => {
+    const stripped = rawName.replace(/[<>:"/\\|?*]+/g, '').trim();
+    if (!stripped) return;
+
+    set((state) => {
+      const prev = state.fileName;
+      let next: string;
+      if (!prev || /\.(pen|op|json)$/i.test(prev)) {
+        const base = stripped.replace(/\.(pen|op|json)$/i, '');
+        if (!base) return state;
+        next = `${base}.op`;
+      } else {
+        next = stripped;
+      }
+
+      let { document } = state;
+      if (document.projectMeta) {
+        const label = next.replace(/\.(pen|op|json)$/i, '') || document.projectMeta.projectName;
+        document = {
+          ...document,
+          projectMeta: { ...document.projectMeta, projectName: label },
+        };
+      }
+
+      return { fileName: next, isDirty: true, document };
+    });
+
+    const { fileName, filePath } = get();
+    import('@/stores/design-md-store').then(({ useDesignMdStore }) => {
+      useDesignMdStore.getState().syncToDocument(fileName, filePath);
+    });
+  },
+
   setFileHandle: (fileHandle) => set({ fileHandle }),
   setSaveDialogOpen: (saveDialogOpen) => set({ saveDialogOpen }),
   setProjectMetadata: (meta) =>

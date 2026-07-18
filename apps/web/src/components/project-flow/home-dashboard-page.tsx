@@ -3,14 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Check, ChevronDown, LayoutGrid, List, PenTool, Cloud, Loader2 } from 'lucide-react';
 import { useDocumentStore } from '@/stores/document-store';
-import { useCanvasStore } from '@/stores/canvas-store';
 import { useProjectFlowStore } from '@/stores/project-flow-store';
 import { DashboardShell } from '@/components/project-flow/dashboard-shell';
 import { useDashboardNavSections } from '@/components/project-flow/dashboard-nav-sections';
 import { LocalProjectGrid, type LocalProjectGridItem } from '@/components/project-flow/local-project-grid';
 import { NewProjectCreateMenu } from '@/components/project-flow/new-project-create-menu';
 import { buildCmsProjectList, useDashboardCmsSidebar } from '@/components/project-flow/dashboard-cms-sidebar';
-import { NewProjectWizardDialog, type ArchitectChoice } from '@/components/project-flow/new-project-wizard-dialog';
+import { NewProjectWizardDialog, type ArchitectChoice, type WizardLaunchPreset } from '@/components/project-flow/new-project-wizard-dialog';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -22,7 +21,7 @@ import { getRecentFiles, relativeTime, type RecentFile } from '@/utils/recent-fi
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCloudSitesStore } from '@/stores/cloud-sites-store';
-import { useWorkspaceRegistryStore } from '@/stores/workspace-registry-store';
+import { useWorkspaceRegistryStore, clearPendingWorkspaceForDashboardNewProject } from '@/stores/workspace-registry-store';
 import { tryOpenRecentProjectFile } from '@/utils/open-recent-project';
 
 const SESSION_PROJECT_VALUE = '__session__';
@@ -47,10 +46,7 @@ export function HomeDashboardPage() {
   const isDirty = useDocumentStore((s) => s.isDirty);
 
   const [wizardOpen, setWizardOpen] = useState(false);
-  const [wizardLaunchPreset, setWizardLaunchPreset] = useState<{
-    choice: ArchitectChoice;
-    skipArchitectStep: boolean;
-  } | null>(null);
+  const [wizardLaunchPreset, setWizardLaunchPreset] = useState<WizardLaunchPreset | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [sortField, setSortField] = useState<'alphabetical' | 'dateCreated' | 'lastViewed'>('lastViewed');
@@ -61,6 +57,9 @@ export function HomeDashboardPage() {
   const { isAuthenticated } = useAuthStore();
   const { sites: cloudSites, fetchSites, isLoading: isLoadingCloud } = useCloudSitesStore();
   const assignmentByProject = useWorkspaceRegistryStore((s) => s.assignmentByProject);
+  const workspaces = useWorkspaceRegistryStore((s) => s.workspaces);
+  const assignProjectToWorkspace = useWorkspaceRegistryStore((s) => s.assignProjectToWorkspace);
+  const releaseProject = useWorkspaceRegistryStore((s) => s.releaseProject);
   const navSections = useDashboardNavSections();
 
   useEffect(() => {
@@ -92,6 +91,7 @@ export function HomeDashboardPage() {
     }
     if (consumedNewProjectQueryParam) return;
     consumedNewProjectQueryParam = true;
+    clearPendingWorkspaceForDashboardNewProject();
     useProjectFlowStore.getState().createProject({
       projectName: i18n.t('common.untitled'),
       creationMode: 'normal',
@@ -146,33 +146,10 @@ export function HomeDashboardPage() {
   const clearWizardLaunchPreset = useCallback(() => setWizardLaunchPreset(null), []);
 
   const openWizardWithChoice = useCallback((choice: ArchitectChoice) => {
-    if (choice === 'normal' || choice === 'ai' || choice === 'reverse') {
-      const modeMap: Record<ArchitectChoice, any> = {
-        ai: 'ai',
-        reverse: 'reverse',
-        normal: 'normal',
-        figma: 'figma',
-        import_json: 'normal',
-      };
-      useProjectFlowStore.getState().createProject({
-        projectName: t('common.untitled'),
-        creationMode: modeMap[choice],
-        projectType: 'landing',
-        stack: 'react',
-        templatePreset: 'landing-hero',
-        backendStack: 'static',
-      });
-      void navigate({ to: '/editor', replace: true });
-      return;
-    }
-    setWizardLaunchPreset({ choice, skipArchitectStep: true });
+    clearPendingWorkspaceForDashboardNewProject();
+    setWizardLaunchPreset({ choice, singleStepSetup: true });
     setWizardOpen(true);
-  }, [t, navigate]);
-
-  const startFigmaImportFlow = useCallback(() => {
-    void navigate({ to: '/editor' });
-    requestAnimationFrame(() => useCanvasStore.getState().setFigmaImportDialogOpen(true));
-  }, [navigate]);
+  }, []);
 
   const workspaceLabel = projectMeta?.projectName ?? fileName ?? null;
 
@@ -207,6 +184,11 @@ export function HomeDashboardPage() {
     return SESSION_PROJECT_VALUE;
   }, [sessionCardVisible, normalizedFilePath]);
 
+  const workspacePickerRows = useMemo(
+    () => workspaces.map((w) => ({ id: w.id, name: w.name })),
+    [workspaces],
+  );
+
   const workspaceProjectGridItems: LocalProjectGridItem[] = useMemo(() => {
     const rel = (ts: number) => {
       const { key, params } = relativeTime(ts);
@@ -217,6 +199,7 @@ export function HomeDashboardPage() {
       const id = recentProjectId(r);
       if (!assignmentByProject[id]) continue;
       const canOpen = Boolean(r.filePath && isElectron());
+      const wid = assignmentByProject[id]!;
       items.push({
         id,
         title: r.fileName,
@@ -226,11 +209,20 @@ export function HomeDashboardPage() {
           const ok = await tryOpenRecentProjectFile(r);
           if (ok) void navigate({ to: '/editor' });
         },
+        moveMenu: {
+          currentWorkspaceId: wid,
+          workspaces: workspacePickerRows,
+          onMoveTo: (target) => {
+            if (target === null) releaseProject(id);
+            else assignProjectToWorkspace(id, target);
+          },
+        },
       });
     }
     if (sessionCardVisible && sessionId && assignmentByProject[sessionId]) {
       const title = projectMeta?.projectName ?? fileName ?? t('common.untitled');
       const canOpen = normalizedFilePath ? Boolean(isElectron()) : true;
+      const sid = assignmentByProject[sessionId]!;
       items.unshift({
         id: sessionId,
         title,
@@ -248,6 +240,14 @@ export function HomeDashboardPage() {
           }
           void navigate({ to: '/editor' });
         },
+        moveMenu: {
+          currentWorkspaceId: sid,
+          workspaces: workspacePickerRows,
+          onMoveTo: (target) => {
+            if (target === null) releaseProject(sessionId);
+            else assignProjectToWorkspace(sessionId, target);
+          },
+        },
       });
     }
     return items;
@@ -263,6 +263,9 @@ export function HomeDashboardPage() {
     t,
     i18n,
     navigate,
+    workspacePickerRows,
+    assignProjectToWorkspace,
+    releaseProject,
   ]);
 
   const cmsProjectList = useMemo(
@@ -378,7 +381,6 @@ export function HomeDashboardPage() {
           <NewProjectCreateMenu
             variant="compact"
             onWizardPreset={openWizardWithChoice}
-            onFigma={startFigmaImportFlow}
             onImport={() => void handleOpenFile()}
           />
         </header>
@@ -396,7 +398,6 @@ export function HomeDashboardPage() {
               <NewProjectCreateMenu
                 variant="default"
                 onWizardPreset={openWizardWithChoice}
-                onFigma={startFigmaImportFlow}
                 onImport={() => void handleOpenFile()}
               />
             </div>

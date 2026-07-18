@@ -1,6 +1,6 @@
 import { defineEventHandler, getRouterParam, getQuery, createError } from 'h3';
 import { assemblePlan } from '../../../../utils/codegen-plan-store';
-import type { Framework } from '@zseven-w/pen-types';
+import type { Framework } from '@buildev/pen-types';
 
 export default defineEventHandler((event) => {
   const planId = getRouterParam(event, 'id');

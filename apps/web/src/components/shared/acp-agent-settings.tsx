@@ -251,12 +251,14 @@ function AcpAgentCard({ agent }: { agent: AcpAgentConfig }) {
 
   const [editing, setEditing] = useState(false);
   const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isConnected = connectionStatus?.isConnected ?? false;
   const agentInfo = connectionStatus?.agentInfo;
 
   const handleConnect = useCallback(async () => {
     setConnecting(true);
+    setError(null);
     try {
       const res = await fetch('/api/ai/connect-acp', {
         method: 'POST',
@@ -272,11 +274,13 @@ function AcpAgentCard({ agent }: { agent: AcpAgentConfig }) {
       } else {
         const msg = data?.error ?? `HTTP ${res.status}`;
         console.error('[acp] connect failed:', msg);
-        alert(`ACP connect failed: ${msg}`);
         setStatus(agent.id, { isConnected: false });
+        throw new Error(msg);
       }
     } catch (err) {
       console.error('[acp] connect error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
       setStatus(agent.id, { isConnected: false });
     } finally {
       setConnecting(false);
@@ -373,6 +377,11 @@ function AcpAgentCard({ agent }: { agent: AcpAgentConfig }) {
                 : t('acp.notConnected')}
             </span>
           </div>
+          {error && (
+            <span className="text-[11px] text-destructive leading-tight block mt-0.5 px-0.5">
+              {error}
+            </span>
+          )}
         </div>
 
         {/* Actions */}

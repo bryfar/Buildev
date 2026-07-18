@@ -130,6 +130,7 @@ export function WorkspacesListPage() {
       title: ws.name,
       subtitle: t('projectFlow.workspaces.projectCount', { count: counts.get(ws.id) ?? 0 }),
       canOpen: true,
+      openActionLabel: t('projectFlow.workspaces.enterWorkspace'),
       onOpen: () => {
         void navigate({ to: '/workspaces/$workspaceId', params: { workspaceId: ws.id } });
       },
@@ -145,7 +146,11 @@ export function WorkspacesListPage() {
     setNameDraft('');
     setCreateOpenMobile(false);
     setCreateOpenDesktop(false);
-    void navigate({ to: '/workspaces/$workspaceId', params: { workspaceId: ws.id } });
+    void navigate({
+      to: '/workspaces/$workspaceId',
+      params: { workspaceId: ws.id },
+      search: { new: '1' },
+    });
   };
 
   const createFormPopover = () => (

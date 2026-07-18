@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import { appStorage, initAppStorage } from '@/utils/app-storage';
 import type { ComponentType, SVGProps } from 'react';
 import {
@@ -70,6 +70,13 @@ const PROVIDER_ICONS: Record<AIProviderType, ComponentType<SVGProps<SVGSVGElemen
 };
 
 const PROVIDER_ORDER: AIProviderType[] = ['anthropic', 'openai', 'opencode', 'copilot', 'gemini'];
+
+/** Base name for inline rename when `fileName` is a disk-style `.op` / `.pen` file */
+function fileNameToTitleEditDraft(fileName: string | null): string {
+  if (!fileName) return '';
+  if (/\.(pen|op|json)$/i.test(fileName)) return fileName.replace(/\.(pen|op|json)$/i, '');
+  return fileName;
+}
 
 function AgentStatusButton() {
   const { t } = useTranslation();
@@ -180,12 +187,62 @@ export default function TopBar() {
   const ideModeOpen = useCanvasStore((s) => s.ideModeOpen);
   const setIdeModeOpen = useCanvasStore((s) => s.setIdeModeOpen);
   const fileName = useDocumentStore((s) => s.fileName);
+  const setDocumentDisplayName = useDocumentStore((s) => s.setDocumentDisplayName);
   const isDirty = useDocumentStore((s) => s.isDirty);
 
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
   const [saveIndicator, setSaveIndicator] = useState(false);
+
+  const [titleEditing, setTitleEditing] = useState(false);
+  const [titleDraft, setTitleDraft] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!titleEditing) return;
+    const id = requestAnimationFrame(() => {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [titleEditing]);
+
+  const cancelTitleEdit = useCallback(() => {
+    setTitleEditing(false);
+  }, []);
+
+  const commitTitleEdit = useCallback(() => {
+    const raw = titleDraft.trim();
+    if (!raw) {
+      setTitleEditing(false);
+      return;
+    }
+    setDocumentDisplayName(raw);
+    setTitleEditing(false);
+  }, [titleDraft, setDocumentDisplayName]);
+
+  const beginTitleEdit = useCallback(() => {
+    setTitleDraft(fileNameToTitleEditDraft(fileName));
+    setTitleEditing(true);
+  }, [fileName]);
+
+  const handleTitleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        commitTitleEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelTitleEdit();
+      }
+    },
+    [commitTitleEdit, cancelTitleEdit],
+  );
+
+  const handleTitleBlur = useCallback(() => {
+    commitTitleEdit();
+  }, [commitTitleEdit]);
 
   // Read computed CSS --card and --card-foreground as hex for Electron overlay
   const syncOverlayColors = useCallback((t: 'dark' | 'light') => {
@@ -494,9 +551,30 @@ export default function TopBar() {
 
       {/* Center section — file name + git indicator */}
       <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5">
-        <span className="truncate text-xs leading-none text-foreground" suppressHydrationWarning>
-          {displayName}
-        </span>
+        {titleEditing ? (
+          <input
+            ref={titleInputRef}
+            type="text"
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            onKeyDown={handleTitleKeyDown}
+            onBlur={handleTitleBlur}
+            className="app-region-no-drag z-10 h-6 max-w-[min(360px,50vw)] min-w-[140px] rounded border border-input bg-background px-2 text-xs leading-none text-foreground outline-none focus:border-ring"
+            aria-label={t('common.rename')}
+          />
+        ) : (
+          <span
+            className="app-region-no-drag cursor-text truncate text-xs leading-none text-foreground"
+            title={t('topbar.renameProjectTitle')}
+            suppressHydrationWarning
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              beginTitleEdit();
+            }}
+          >
+            {displayName}
+          </span>
+        )}
         {isDirty && (
           <span className="text-xs leading-none text-muted-foreground">{t('topbar.edited')}</span>
         )}

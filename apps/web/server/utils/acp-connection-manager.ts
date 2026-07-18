@@ -27,17 +27,19 @@ export async function connectAcp(
   // where spawning arbitrary processes is a security risk. Allow it when:
   //   - Running under Electron (process.versions.electron set)
   //   - Running in dev mode (NODE_ENV !== 'production')
-  //   - OPENPENCIL_ALLOW_LOCAL_ACP=1 (explicit opt-in for self-hosted non-Electron)
+  //   - BUILDEV_ALLOW_LOCAL_ACP=1 or OPENPENCIL_ALLOW_LOCAL_ACP=1 (explicit opt-in for self-hosted non-Electron)
   // Note: Nitro server runs in a Vite worker in dev, so process.versions.electron
   // is undefined even during electron:dev — hence the NODE_ENV check.
   const isElectron = !!process.versions.electron;
   const isDev = process.env.NODE_ENV !== 'production';
-  const isAllowed = process.env.OPENPENCIL_ALLOW_LOCAL_ACP === '1';
+  const isAllowed =
+    process.env.BUILDEV_ALLOW_LOCAL_ACP === '1' ||
+    process.env.OPENPENCIL_ALLOW_LOCAL_ACP === '1';
   if (config.connectionType === 'local' && !isElectron && !isDev && !isAllowed) {
     return {
       connected: false,
       error:
-        'Local agents are only available in the desktop app. Set OPENPENCIL_ALLOW_LOCAL_ACP=1 to enable in self-hosted deployments.',
+        'Local agents are only available in the desktop app. Set BUILDEV_ALLOW_LOCAL_ACP=1 (or OPENPENCIL_ALLOW_LOCAL_ACP=1) to enable in self-hosted deployments.',
     };
   }
 

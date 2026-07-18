@@ -1,6 +1,6 @@
 # Adds Microsoft Defender folder and process exclusions for Zig / agent-native builds.
 # Must run elevated. If not admin, re-launches this script with UAC.
-# From openpencil/:  bun run agent:defender-exclusions
+# From repo root: bun run agent:defender-exclusions
 # Or:  powershell -ExecutionPolicy Bypass -File scripts/windows-defender-zig-exclusions.ps1
 
 $ErrorActionPreference = 'Stop'
@@ -35,15 +35,21 @@ $dirPaths = @(
   (Join-Path 'C:\zig' 'zig-project-cache'),
   (Join-Path 'C:\zig' 'zig-global-cache'),
   (Join-Path $root '.zig-0.15.2'),
+  (Join-Path $root '.zig-buildev-project-cache'),
+  (Join-Path $root '.zig-buildev-global-cache'),
   (Join-Path $root '.zig-openpencil-project-cache'),
   (Join-Path $root '.zig-openpencil-global-cache'),
-  (Join-Path $root 'packages' 'agent-native'),
-  (Join-Path $root '.zig-0.15.2' 'zig-x86_64-windows-0.15.2' 'zig-build-project-cache'),
-  (Join-Path $root '.zig-0.15.2' 'zig-x86_64-windows-0.15.2' 'zig-build-global-cache'),
-  (Join-Path $root '.zig-0.15.2' 'zig-build-project-cache'),
-  (Join-Path $root '.zig-0.15.2' 'zig-build-global-cache'),
+  (Join-Path (Join-Path $root 'packages') 'agent-native'),
+  (Join-Path (Join-Path (Join-Path $root '.zig-0.15.2') 'zig-x86_64-windows-0.15.2') 'zig-build-project-cache'),
+  (Join-Path (Join-Path (Join-Path $root '.zig-0.15.2') 'zig-x86_64-windows-0.15.2') 'zig-build-global-cache'),
+  (Join-Path (Join-Path $root '.zig-0.15.2') 'zig-build-project-cache'),
+  (Join-Path (Join-Path $root '.zig-0.15.2') 'zig-build-global-cache'),
+  (Join-Path $env:USERPROFILE '.buildev-zig-project-cache'),
+  (Join-Path $env:USERPROFILE '.buildev-zig-global-cache'),
   (Join-Path $env:USERPROFILE '.openpencil-zig-project-cache'),
   (Join-Path $env:USERPROFILE '.openpencil-zig-global-cache'),
+  (Join-Path $env:TEMP 'buildev-zig-project-cache'),
+  (Join-Path $env:TEMP 'buildev-zig-global-cache'),
   (Join-Path $env:TEMP 'openpencil-zig-project-cache'),
   (Join-Path $env:TEMP 'openpencil-zig-global-cache')
 )
@@ -58,8 +64,8 @@ if ($env:BUILDDEV_ZIG_CACHE_ROOT) {
 }
 
 $zigExeCandidates = @(
-  (Join-Path $root '.zig-0.15.2' 'zig-x86_64-windows-0.15.2' 'zig.exe'),
-  (Join-Path $root '.zig-0.15.2' 'zig.exe')
+  (Join-Path (Join-Path (Join-Path $root '.zig-0.15.2') 'zig-x86_64-windows-0.15.2') 'zig.exe'),
+  (Join-Path (Join-Path $root '.zig-0.15.2') 'zig.exe')
 )
 
 $existingPaths = [System.Collections.Generic.HashSet[string]]::new(

@@ -1,7 +1,23 @@
+import { useState } from 'react';
 import { PenTool } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+
+export type ProjectMoveMenuConfig = {
+  /** If set, project is assigned to that workspace; `null` means draft / unassigned. */
+  currentWorkspaceId: string | null;
+  workspaces: Array<{ id: string; name: string }>;
+  /** `null` = move to Drafts; otherwise assign to that workspace id. */
+  onMoveTo: (targetWorkspaceId: string | null) => void;
+};
 
 export type LocalProjectGridItem = {
   id: string;
@@ -10,8 +26,14 @@ export type LocalProjectGridItem = {
   /** When false, open is disabled (e.g. browser without path). */
   canOpen: boolean;
   onOpen: () => void | Promise<void>;
+  /** Label for the hover overlay button; defaults to "Open editor". */
+  openActionLabel?: string;
+  /** When true, clicking the card body (not only the overlay) runs onOpen when canOpen. */
+  openOnCardClick?: boolean;
   /** Optional text action below the subtitle (e.g. move to drafts). */
   footerAction?: { label: string; onClick: () => void };
+  /** Move between Drafts and workspaces (same logical project key as `id`). */
+  moveMenu?: ProjectMoveMenuConfig;
 };
 
 type LocalProjectGridProps = {
@@ -23,6 +45,76 @@ type LocalProjectGridProps = {
 const cardShell =
   'group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:border-primary/35 hover:shadow-md';
 const thumbArea = 'relative flex aspect-[16/10] items-center justify-center bg-muted/50';
+
+function ProjectMoveRow({ menu }: { menu: ProjectMoveMenuConfig }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  const draftOption =
+    menu.currentWorkspaceId !== null
+      ? [{ key: '__drafts__', label: t('projectFlow.move.toDrafts'), value: null as string | null }]
+      : [];
+
+  const wsOptions = menu.workspaces
+    .filter((w) => w.id !== menu.currentWorkspaceId)
+    .map((w) => ({ key: w.id, label: w.name, value: w.id as string | null }));
+
+  const options = [...draftOption, ...wsOptions];
+  if (options.length === 0) return null;
+
+  return (
+    <div
+      className="mt-2"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-7 w-full justify-center border-border bg-background px-2 text-[11px] font-medium text-foreground shadow-sm hover:bg-accent"
+            aria-label={t('projectFlow.move.menuAria')}
+          >
+            {t('projectFlow.move.trigger')}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[12rem] p-1" onClick={(e) => e.stopPropagation()}>
+          {draftOption.length > 0 ? (
+            <>
+              {draftOption.map((opt) => (
+                <DropdownMenuItem
+                  key={opt.key}
+                  className="cursor-pointer text-xs"
+                  onClick={() => {
+                    menu.onMoveTo(opt.value);
+                    setOpen(false);
+                  }}
+                >
+                  {opt.label}
+                </DropdownMenuItem>
+              ))}
+              {wsOptions.length > 0 ? <DropdownMenuSeparator /> : null}
+            </>
+          ) : null}
+          {wsOptions.map((opt) => (
+            <DropdownMenuItem
+              key={opt.key}
+              className="cursor-pointer text-xs"
+              onClick={() => {
+                menu.onMoveTo(opt.value);
+                setOpen(false);
+              }}
+            >
+              {opt.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 export function LocalProjectGrid({ items, viewMode, emptyMessage }: LocalProjectGridProps) {
   const { t } = useTranslation();
@@ -42,8 +134,38 @@ export function LocalProjectGrid({ items, viewMode, emptyMessage }: LocalProject
         viewMode === 'grid' ? 'grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' : 'flex flex-col',
       )}
     >
-      {items.map((item) => (
-        <article key={item.id} className={cn(cardShell, viewMode === 'list' && 'flex flex-row')}>
+      {items.map((item) => {
+        const openLabel = item.openActionLabel ?? t('projectFlow.dashboard.cardOpenEditor');
+        const cardActivates = item.canOpen && (item.openOnCardClick !== false);
+
+        const runOpen = () => {
+          if (!item.canOpen) return;
+          void item.onOpen();
+        };
+
+        return (
+        <article
+          key={item.id}
+          role={cardActivates ? 'button' : undefined}
+          tabIndex={cardActivates ? 0 : undefined}
+          onClick={cardActivates ? runOpen : undefined}
+          onKeyDown={
+            cardActivates
+              ? (e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    runOpen();
+                  }
+                }
+              : undefined
+          }
+          className={cn(
+            cardShell,
+            viewMode === 'list' && 'flex flex-row',
+            cardActivates &&
+              'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          )}
+        >
           <div
             className={cn(
               thumbArea,
@@ -57,9 +179,12 @@ export function LocalProjectGrid({ items, viewMode, emptyMessage }: LocalProject
                 size="sm"
                 disabled={!item.canOpen}
                 title={!item.canOpen ? t('projectFlow.localProjects.openUnavailableHint') : undefined}
-                onClick={() => void item.onOpen()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  runOpen();
+                }}
               >
-                {t('projectFlow.dashboard.cardOpenEditor')}
+                {openLabel}
               </Button>
             </div>
           </div>
@@ -83,9 +208,11 @@ export function LocalProjectGrid({ items, viewMode, emptyMessage }: LocalProject
                 {item.footerAction.label}
               </button>
             ) : null}
+            {item.moveMenu ? <ProjectMoveRow menu={item.moveMenu} /> : null}
           </div>
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

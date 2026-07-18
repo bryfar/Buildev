@@ -9,11 +9,10 @@ import type { ArchitectChoice } from '@/components/project-flow/new-project-wiza
 export type NewProjectCreateMenuProps = {
   variant: 'compact' | 'default';
   onWizardPreset: (choice: ArchitectChoice) => void;
-  onFigma: () => void;
   onImport: () => void;
 };
 
-export function NewProjectCreateMenu({ variant, onWizardPreset, onFigma, onImport }: NewProjectCreateMenuProps) {
+export function NewProjectCreateMenu({ variant, onWizardPreset, onImport }: NewProjectCreateMenuProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -53,7 +52,7 @@ export function NewProjectCreateMenu({ variant, onWizardPreset, onFigma, onImpor
         className={rowClass}
         onClick={() => {
           close();
-          onFigma();
+          onWizardPreset('figma');
         }}
       >
         <Figma className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.5} />

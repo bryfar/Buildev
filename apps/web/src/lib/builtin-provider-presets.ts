@@ -395,9 +395,19 @@ export function canonicalizeBuiltinProviderConfig(
   const canonicalBaseURL =
     getBaseURLForFormat(preset, config.type, region) ?? getCanonicalBuiltinBaseURL(preset, region);
 
-  return {
+  const out: BuiltinProviderConfig = {
     ...config,
     preset,
     ...(canonicalBaseURL ? { baseURL: canonicalBaseURL } : {}),
   };
+
+  // If URL-based migration changed `preset` (e.g. stale "anthropic" + OpenAI URL),
+  // `type` may no longer match the preset's supported APIs — fix so chat uses
+  // createAnthropicProvider vs createOpenAICompatProvider consistently.
+  const effectivePreset = out.preset ?? inferBuiltinProviderPreset(out);
+  if (effectivePreset === 'custom') return out;
+  if (!presetSupportsFormat(effectivePreset, out.type)) {
+    return { ...out, type: BUILTIN_PROVIDER_PRESETS[effectivePreset].type };
+  }
+  return out;
 }

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { NumberInput } from '../number-input.js';
 import { cn } from '../../ui-primitives.js';
 import { Settings } from 'lucide-react';
-import type { PenNode } from '@zseven-w/pen-types';
+import type { PenNode } from '@buildev/pen-types';
 
 type PaddingMode = 'single' | 'axis' | 'individual';
 

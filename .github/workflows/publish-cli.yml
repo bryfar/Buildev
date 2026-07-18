@@ -35,7 +35,7 @@ jobs:
 
       - name: Install dependencies
         env:
-          OPENPENCIL_SKIP_AGENT_NATIVE: '1'
+          BUILDEV_SKIP_AGENT_NATIVE: '1'
         run: bun install --frozen-lockfile
 
       - name: Get version

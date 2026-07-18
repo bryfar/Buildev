@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useAgentSettingsStore } from '@/stores/agent-settings-store';
 import AgentSettingsDialog from '@/components/shared/agent-settings-dialog';
+import { initAppStorage } from '@/utils/app-storage';
 import { useWorkspaceRegistryStore } from '@/stores/workspace-registry-store';
 
 export interface DashboardNavItem {
@@ -50,7 +51,9 @@ export function DashboardShell({
   const setAgentDialogOpen = useAgentSettingsStore((s) => s.setDialogOpen);
 
   useEffect(() => {
-    useWorkspaceRegistryStore.getState().hydrate();
+    void initAppStorage().then(() => {
+      useWorkspaceRegistryStore.getState().hydrate();
+    });
   }, []);
 
   return (

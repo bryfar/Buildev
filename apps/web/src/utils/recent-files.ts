@@ -1,7 +1,10 @@
 import { appStorage } from '@/utils/app-storage';
 
 const STORAGE_KEY = 'buildev-recent-files';
-const MAX_ENTRIES = 10;
+/** Cap for persisted list (Recents page shows all stored entries, deduped + sorted). */
+const MAX_STORED_RECENT_FILES = 500;
+/** Compact menus (File menu, etc.) only show a short list. */
+const MAX_MENU_RECENT_FILES = 15;
 
 export interface RecentFile {
   fileName: string;
@@ -20,10 +23,34 @@ export function getRecentFiles(): RecentFile[] {
   }
 }
 
+/** Stable id for dedupe / workspace assignment (matches dashboard `path:` / `name:` keys). */
+export function recentFileStableId(r: RecentFile): string {
+  if (r.filePath) return `path:${r.filePath.replace(/\\/g, '/')}`;
+  return `name:${r.fileName}`;
+}
+
+/** Dedupes by path/name, sorts newest `lastOpened` first (typical Recents order). */
+export function getUniqueRecentsSortedByLastOpenedDesc(): RecentFile[] {
+  const raw = getRecentFiles();
+  const byId = new Map<string, RecentFile>();
+  for (const r of raw) {
+    const id = recentFileStableId(r);
+    const prev = byId.get(id);
+    if (!prev || r.lastOpened > prev.lastOpened) byId.set(id, r);
+  }
+  return [...byId.values()].sort((a, b) => b.lastOpened - a.lastOpened);
+}
+
+export function getRecentFilesForMenu(): RecentFile[] {
+  return getUniqueRecentsSortedByLastOpenedDesc().slice(0, MAX_MENU_RECENT_FILES);
+}
+
 function syncToElectron(files: RecentFile[]): void {
   if (typeof window !== 'undefined' && window.electronAPI?.syncRecentFiles) {
-    const forMenu = files
+    const forMenu = [...files]
       .filter((f) => f.filePath)
+      .sort((a, b) => b.lastOpened - a.lastOpened)
+      .slice(0, 30)
       .map((f) => ({ fileName: f.fileName, filePath: f.filePath! }));
     window.electronAPI.syncRecentFiles(forMenu);
   }
@@ -35,7 +62,7 @@ export function addRecentFile(entry: Omit<RecentFile, 'lastOpened'>): void {
     (f) => !(f.fileName === entry.fileName && f.filePath === entry.filePath),
   );
   const newEntry: RecentFile = { ...entry, lastOpened: Date.now() };
-  const updated = [newEntry, ...filtered].slice(0, MAX_ENTRIES);
+  const updated = [newEntry, ...filtered].slice(0, MAX_STORED_RECENT_FILES);
   appStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   syncToElectron(updated);
 }

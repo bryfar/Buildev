@@ -2,7 +2,7 @@
  * Rasterizes `Bran Assets/Flaicon.svg` into favicons and Electron `build/` icons.
  * Copies `Bran Assets/Logotipó.svg` to `apps/web/public/logo-buildev.svg`.
  *
- * Usage (from `openpencil/`): `bun run icons:generate`
+ * Usage (from repo root): `bun run icons:generate`
  */
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

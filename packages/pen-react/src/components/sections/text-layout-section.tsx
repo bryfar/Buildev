@@ -2,7 +2,7 @@ import { NumberInput } from '../number-input.js';
 import { SectionHeader } from '../section-header.js';
 import { MoveHorizontal, WrapText, Maximize2, Check } from 'lucide-react';
 import { cn } from '../../ui-primitives.js';
-import type { PenNode } from '@zseven-w/pen-types';
+import type { PenNode } from '@buildev/pen-types';
 
 type SizingBehavior = number | string | undefined;
 type TextResizing = 'auto' | 'fixed-width' | 'fixed-width-height';

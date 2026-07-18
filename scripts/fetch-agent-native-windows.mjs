@@ -35,7 +35,7 @@ async function downloadToFile(url, dest) {
   const res = await fetch(url, {
     redirect: 'follow',
     headers: {
-      'User-Agent': 'openpencil-agent-fetch/1',
+      'User-Agent': 'buildev-agent-fetch/1',
       ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
     },
   });
@@ -91,7 +91,7 @@ async function resolveUrl() {
   const res = await fetch(path, {
     headers: {
       Accept: 'application/vnd.github+json',
-      'User-Agent': 'openpencil-agent-fetch/1',
+      'User-Agent': 'buildev-agent-fetch/1',
       ...(process.env.GITHUB_TOKEN ? { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}),
     },
   });

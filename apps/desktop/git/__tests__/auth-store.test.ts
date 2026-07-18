@@ -87,8 +87,8 @@ describe('auth-store (unavailable backend → plaintext fallback)', () => {
     await store.set('github.com', { kind: 'token', username: 'kay', token: 't' });
 
     const bytes = await fsp.readFile(filePath, 'utf-8');
-    expect(bytes.startsWith('__OPENPENCIL_AUTH_PLAINTEXT_V1__')).toBe(true);
-    const body = bytes.slice('__OPENPENCIL_AUTH_PLAINTEXT_V1__'.length);
+    expect(bytes.startsWith('__BUILDEV_AUTH_PLAINTEXT_V1__')).toBe(true);
+    const body = bytes.slice('__BUILDEV_AUTH_PLAINTEXT_V1__'.length);
     const obj = JSON.parse(body);
     expect(obj['github.com'].kind).toBe('token');
   });
@@ -117,11 +117,26 @@ describe('auth-store (unavailable backend → plaintext fallback)', () => {
 
     // Critical: the original encrypted file is unchanged.
     const bytesAfter = await fsp.readFile(filePath, 'utf-8');
-    expect(bytesAfter.startsWith('__OPENPENCIL_AUTH_PLAINTEXT_V1__')).toBe(false);
+    expect(bytesAfter.startsWith('__BUILDEV_AUTH_PLAINTEXT_V1__')).toBe(false);
     // And a new instance with the in-memory backend can still read both
     // original credentials.
     const recovered = createAuthStore({ filePath, backend: createInMemoryBackend() });
     expect((await recovered.get('github.com'))?.kind).toBe('token');
     expect((await recovered.get('gitlab.com'))?.kind).toBe('token');
+  });
+
+  it('reads plaintext files written with the legacy marker header', async () => {
+    const filePath = join(temp.dir, 'git-auth-legacy.bin');
+    const legacyBody = JSON.stringify({
+      'github.com': { kind: 'token', username: 'kay', token: 'legacy-token' },
+    });
+    await fsp.writeFile(
+      filePath,
+      '__OPENPENCIL_AUTH_PLAINTEXT_V1__' + legacyBody,
+      'utf-8',
+    );
+    const store2 = createAuthStore({ filePath, backend: createInMemoryBackend() });
+    const got = await store2.get('github.com');
+    expect(got).toEqual({ kind: 'token', username: 'kay', token: 'legacy-token' });
   });
 });

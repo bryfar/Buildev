@@ -32,7 +32,7 @@ import { useFigmaPaste } from '@/hooks/use-figma-paste';
 import { useMcpSync } from '@/hooks/use-mcp-sync';
 import { useFileDrop } from '@/hooks/use-file-drop';
 import { initAppStorage } from '@/utils/app-storage';
-import { getRecentFiles } from '@/utils/recent-files';
+import { getUniqueRecentsSortedByLastOpenedDesc } from '@/utils/recent-files';
 import SkiaCanvas from '@/canvas/skia/skia-canvas';
 import IdeLayout from './ide-layout';
 
@@ -204,10 +204,11 @@ export default function EditorLayout() {
       useUIKitStore.getState().hydrate();
       useCanvasStore.getState().hydrate();
       // Sync recent files to Electron native menu on startup
-      const recent = getRecentFiles();
+      const recent = getUniqueRecentsSortedByLastOpenedDesc();
       if (recent.length > 0 && window.electronAPI?.syncRecentFiles) {
         const forMenu = recent
           .filter((f) => f.filePath)
+          .slice(0, 30)
           .map((f) => ({ fileName: f.fileName, filePath: f.filePath! }));
         window.electronAPI.syncRecentFiles(forMenu);
       }

@@ -49,7 +49,9 @@ import {
 const pkg = { name: '@buildev/pen-mcp', version: '0.6.0' };
 
 const DEBUG_ENABLED =
-  process.env.OPENPENCIL_DEBUG_TOOLS === '1' || process.argv.includes('--debug');
+  process.env.BUILDEV_DEBUG_TOOLS === '1' ||
+  process.env.OPENPENCIL_DEBUG_TOOLS === '1' ||
+  process.argv.includes('--debug');
 
 /**
  * MCP content block types supported by this server's tool handlers.

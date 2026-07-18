@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, Plus } from 'lucide-react';
@@ -9,11 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspaceRegistryStore } from '@/stores/workspace-registry-store';
 import { useDocumentStore } from '@/stores/document-store';
-import { useProjectFlowStore } from '@/stores/project-flow-store';
 import { getRecentFiles, relativeTime, type RecentFile } from '@/utils/recent-files';
 import { tryOpenRecentProjectFile } from '@/utils/open-recent-project';
 import { isElectron } from '@/utils/file-operations';
-import { setPendingWorkspaceId } from '@/utils/pending-workspace-assignment';
+import { setPendingWorkspaceId, clearPendingWorkspaceId } from '@/utils/pending-workspace-assignment';
+import { NewProjectWizardDialog, type WizardLaunchPreset } from '@/components/project-flow/new-project-wizard-dialog';
 
 function normalizePathForId(path: string): string {
   return path.replace(/\\/g, '/');
@@ -32,9 +32,12 @@ function labelForProjectKey(key: string, recentByKey: Map<string, RecentFile>): 
   return key;
 }
 
-type Props = { workspaceId: string };
+/** Prevents double wizard open under React Strict Mode for the same workspace + ?new=1 visit. */
+const workspaceBootstrapNewWizardConsumed = new Set<string>();
 
-export function WorkspaceDetailPage({ workspaceId }: Props) {
+type Props = { workspaceId: string; bootstrapNewProjectWizard?: boolean };
+
+export function WorkspaceDetailPage({ workspaceId, bootstrapNewProjectWizard = false }: Props) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const navSections = useDashboardNavSections();
@@ -46,6 +49,15 @@ export function WorkspaceDetailPage({ workspaceId }: Props) {
   const renameWorkspace = useWorkspaceRegistryStore((s) => s.renameWorkspace);
   const deleteWorkspace = useWorkspaceRegistryStore((s) => s.deleteWorkspace);
 
+  const [workspaceWizardOpen, setWorkspaceWizardOpen] = useState(false);
+  const [workspaceWizardPreset, setWorkspaceWizardPreset] = useState<WizardLaunchPreset | null>(null);
+
+  const openNewProjectWizard = useCallback(() => {
+    setPendingWorkspaceId(workspaceId);
+    setWorkspaceWizardPreset({ choice: 'normal', singleStepSetup: true });
+    setWorkspaceWizardOpen(true);
+  }, [workspaceId]);
+
   const projectMeta = useDocumentStore((s) => s.document.projectMeta);
   const fileName = useDocumentStore((s) => s.fileName);
   const workspaceLabel = projectMeta?.projectName ?? fileName ?? null;
@@ -53,6 +65,19 @@ export function WorkspaceDetailPage({ workspaceId }: Props) {
   const [viewMode] = useState<'grid' | 'list'>('grid');
   const [renameDraft, setRenameDraft] = useState('');
   const workspace = useMemo(() => workspaces.find((w) => w.id === workspaceId) ?? null, [workspaces, workspaceId]);
+
+  useLayoutEffect(() => {
+    if (!bootstrapNewProjectWizard || !workspace) return;
+    if (workspaceBootstrapNewWizardConsumed.has(workspaceId)) return;
+    workspaceBootstrapNewWizardConsumed.add(workspaceId);
+    openNewProjectWizard();
+    void navigate({
+      to: '/workspaces/$workspaceId',
+      params: { workspaceId },
+      search: {},
+      replace: true,
+    });
+  }, [bootstrapNewProjectWizard, workspace, workspaceId, navigate, openNewProjectWizard]);
 
   useEffect(() => {
     if (workspace) setRenameDraft(workspace.name);
@@ -80,6 +105,11 @@ export function WorkspaceDetailPage({ workspaceId }: Props) {
     return keys;
   }, [assignmentByProject]);
 
+  const workspacePickerRows = useMemo(
+    () => workspaces.map((w) => ({ id: w.id, name: w.name })),
+    [workspaces],
+  );
+
   const formatRelative = (ts: number) => {
     const { key, params } = relativeTime(ts);
     return i18n.t(key, params);
@@ -101,13 +131,27 @@ export function WorkspaceDetailPage({ workspaceId }: Props) {
           const ok = await tryOpenRecentProjectFile(r);
           if (ok) void navigate({ to: '/editor' });
         },
-        footerAction: {
-          label: t('projectFlow.workspaceDetail.moveToDrafts'),
-          onClick: () => releaseProject(key),
+        moveMenu: {
+          currentWorkspaceId: workspaceId,
+          workspaces: workspacePickerRows,
+          onMoveTo: (target) => {
+            if (target === null) releaseProject(key);
+            else assignProjectToWorkspace(key, target);
+          },
         },
       };
     });
-  }, [inWorkspaceKeys, recentByKey, t, i18n, navigate, releaseProject]);
+  }, [
+    inWorkspaceKeys,
+    recentByKey,
+    t,
+    i18n,
+    navigate,
+    releaseProject,
+    assignProjectToWorkspace,
+    workspaceId,
+    workspacePickerRows,
+  ]);
 
   if (!workspace) {
     return (
@@ -122,21 +166,25 @@ export function WorkspaceDetailPage({ workspaceId }: Props) {
     );
   }
 
-  const onNewProjectInWorkspace = () => {
-    setPendingWorkspaceId(workspaceId);
-    useProjectFlowStore.getState().createProject({
-      projectName: t('common.untitled'),
-      creationMode: 'normal',
-      projectType: 'landing',
-      stack: 'react',
-      templatePreset: 'landing-hero',
-      backendStack: 'static',
-    });
-    void navigate({ to: '/editor' });
-  };
+  const onNewProjectInWorkspace = openNewProjectWizard;
 
   return (
     <DashboardShell navSections={navSections} workspaceLabel={workspaceLabel} workspaceActive={Boolean(projectMeta || fileName)}>
+      <NewProjectWizardDialog
+        open={workspaceWizardOpen}
+        onClose={() => {
+          setWorkspaceWizardOpen(false);
+          setWorkspaceWizardPreset(null);
+          clearPendingWorkspaceId();
+        }}
+        onProjectCreated={() => {
+          setWorkspaceWizardOpen(false);
+          setWorkspaceWizardPreset(null);
+          void navigate({ to: '/editor', replace: true });
+        }}
+        launchPreset={workspaceWizardPreset}
+        onLaunchPresetConsumed={() => setWorkspaceWizardPreset(null)}
+      />
       <div className="flex min-h-screen flex-1 flex-col bg-background text-foreground">
         <header className="flex flex-col gap-3 border-b border-border bg-card px-4 py-3 sm:px-8">
           <nav
@@ -218,11 +266,28 @@ export function WorkspaceDetailPage({ workspaceId }: Props) {
         </header>
 
         <div className="flex flex-1 flex-col gap-6 px-4 py-6 sm:px-8">
-          <LocalProjectGrid
-            items={gridItems}
-            viewMode={viewMode}
-            emptyMessage={t('projectFlow.workspaceDetail.emptyProjects')}
-          />
+          {gridItems.length === 0 ? (
+            <div className="flex min-h-[min(22rem,50vh)] flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-muted/15 px-6 py-12 text-center">
+              <div className="max-w-md space-y-1">
+                <p className="text-sm font-medium text-foreground">
+                  {t('projectFlow.workspaceDetail.emptyHeroTitle')}
+                </p>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {t('projectFlow.workspaceDetail.emptyHeroDescription')}
+                </p>
+              </div>
+              <Button type="button" className="gap-1.5" onClick={onNewProjectInWorkspace}>
+                <Plus className="h-4 w-4" strokeWidth={2} aria-hidden />
+                {t('projectFlow.workspaceDetail.newProject')}
+              </Button>
+            </div>
+          ) : (
+            <LocalProjectGrid
+              items={gridItems}
+              viewMode={viewMode}
+              emptyMessage={t('projectFlow.workspaceDetail.emptyProjects')}
+            />
+          )}
         </div>
       </div>
     </DashboardShell>

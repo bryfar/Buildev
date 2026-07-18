@@ -1,7 +1,7 @@
 import { useRef, useEffect } from 'react';
 import { Plus, Folder, Save, SaveAll, FileText, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { getRecentFiles, clearRecentFiles, relativeTime } from '@/utils/recent-files';
+import { getRecentFilesForMenu, clearRecentFiles, relativeTime } from '@/utils/recent-files';
 
 interface FileMenuProps {
   open: boolean;
@@ -47,7 +47,7 @@ export default function FileMenu({
 
   if (!open) return null;
 
-  const recentFiles = getRecentFiles();
+  const recentFiles = getRecentFilesForMenu();
   const isMac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.userAgent);
   const mod = isMac ? '\u2318' : 'Ctrl+';
 

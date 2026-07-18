@@ -20,6 +20,16 @@ Detailed module docs are in `packages/AGENTS.md`, `apps/web/AGENTS.md`, `apps/de
 - **CLI dev:** `bun run cli:dev` (run CLI from source via Bun)
 - **Publish beta:** `bun run publish:beta [N]` (publish all npm packages with beta tag)
 
+## Environment (`BUILDEV_*`)
+
+Optional flags used by scripts and server code. Prefer the **`BUILDEV_`** prefix; the same flags are still read under the legacy **`OPENPENCIL_`** names so existing shells and CI jobs keep working.
+
+- **`BUILDEV_SKIP_AGENT_NATIVE=1`** (or `OPENPENCIL_SKIP_AGENT_NATIVE=1`) — skip building the Zig NAPI addon during `postinstall` (CI publish, lint-only flows). Do **not** set this locally if you use **Design with Agent** or builtin chat; you need `bun run agent:build` and `packages/agent-native/napi/agent_napi.node`.
+- **`BUILDEV_REQUIRE_AGENT_NATIVE=1`** (or `OPENPENCIL_REQUIRE_AGENT_NATIVE=1`) — fail install if the native addon cannot be built (Electron CI).
+- **`BUILDEV_ALLOW_LOCAL_ACP=1`** (or `OPENPENCIL_ALLOW_LOCAL_ACP=1`) — allow local ACP agent connections in hosted production (see `acp-connection-manager.ts`).
+- **`BUILDEV_DEBUG_TOOLS=1`** (or `OPENPENCIL_DEBUG_TOOLS=1`) — enable extra MCP tool debug routes.
+- **`BUILDEV_HTTP_LOG_REQUEST_BODY=1`** (or `OPENPENCIL_HTTP_LOG_REQUEST_BODY=1`) — log HTTP request bodies in the agent-native Zig client (verbose).
+
 ## Architecture
 
 Buildev is an open-source vector design tool (alternative to Pencil.dev) with a Design-as-Code philosophy. Organized as a **Bun monorepo** with workspaces:

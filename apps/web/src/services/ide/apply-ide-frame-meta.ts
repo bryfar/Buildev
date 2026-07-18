@@ -2,7 +2,7 @@
  * Channel A (subset): parse `@buildev-frame-meta` from virtual source and
  * return width/height for patching the frame node. React `.tsx` MVP.
  */
-/** First `// @buildev-frame-meta` or legacy `// @openpencil-frame-meta` line in the file. */
+/** First `// @buildev-frame-meta` or legacy alternate `// @…-frame-meta` line in the file. */
 const META_RE = /\/\/\s*@(?:buildev|openpencil)-frame-meta\s+(\{[\s\S]*?\})/;
 
 export type FrameMetaParseFailureKind = 'missing' | 'invalid';
@@ -37,7 +37,8 @@ export function parseBuildevFrameMeta(source: string): FrameMetaParseResult {
     return {
       ok: false,
       kind: 'missing',
-      message: 'Missing // @buildev-frame-meta (or legacy // @openpencil-frame-meta) line (channel A subset).',
+      message:
+        'Missing // @buildev-frame-meta line (or legacy alternate // @…-frame-meta) (channel A subset).',
     };
   }
   try {
@@ -102,6 +103,6 @@ export function parseBuildevFrameMeta(source: string): FrameMetaParseResult {
       ...(cornerRadius !== undefined ? { cornerRadius } : {}),
     };
   } catch {
-    return { ok: false, kind: 'invalid', message: 'Invalid JSON in @buildev-frame-meta / @openpencil-frame-meta.' };
+    return { ok: false, kind: 'invalid', message: 'Invalid JSON in @buildev-frame-meta / legacy @…-frame-meta.' };
   }
 }

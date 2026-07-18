@@ -11,6 +11,7 @@ import {
   formatChatPayloadTooLargeError,
   MAX_CHAT_REQUEST_CHARS,
 } from './context-optimizer';
+import { canonicalizeBuiltinProviderConfig } from '@/lib/builtin-provider-presets';
 
 interface StreamChatOptions {
   hardTimeoutMs?: number;
@@ -131,8 +132,9 @@ export async function* streamChat(
       const currentModel = useAIStore.getState().model;
       if (currentModel.startsWith('builtin:')) {
         const bpId = currentModel.split(':')[1];
-        const bp = useAgentSettingsStore.getState().builtinProviders.find((p) => p.id === bpId);
-        if (bp) {
+        const rawBp = useAgentSettingsStore.getState().builtinProviders.find((p) => p.id === bpId);
+        if (rawBp) {
+          const bp = canonicalizeBuiltinProviderConfig(rawBp);
           builtinFields = {
             builtinApiKey: bp.apiKey,
             builtinBaseURL: bp.baseURL,

@@ -56,6 +56,7 @@ const es: TranslationKeys = {
   'topbar.fullscreen': 'Pantalla completa',
   'topbar.exitFullscreen': 'Salir de pantalla completa',
   'topbar.edited': '— Editado',
+  'topbar.renameProjectTitle': 'Doble clic para cambiar el nombre',
   'topbar.closeConfirmMessage': '¿Desea guardar los cambios antes de cerrar?',
   'topbar.closeConfirmDetail': 'Sus cambios se perderán si no los guarda.',
   'topbar.dontSave': 'No guardar',
@@ -1151,6 +1152,7 @@ const es: TranslationKeys = {
   'projectFlow.workspaces.newNamePlaceholder': 'p. ej. Cliente A',
   'projectFlow.workspaces.scopeAll': 'Todos los espacios',
   'projectFlow.workspaces.projectCount': '{{count}} proyectos',
+  'projectFlow.workspaces.enterWorkspace': 'Abrir espacio de trabajo',
 
   'projectFlow.workspaceDetail.subtitle': 'Los proyectos de este espacio son archivos .op guardados en tu equipo (escritorio).',
   'projectFlow.workspaceDetail.newProject': 'Nuevo proyecto',
@@ -1162,6 +1164,9 @@ const es: TranslationKeys = {
   'projectFlow.workspaceDetail.addFromDrafts': 'Añadir desde borradores',
   'projectFlow.workspaceDetail.pickDraft': 'Elige un proyecto en borradores',
   'projectFlow.workspaceDetail.emptyProjects': 'Aún no hay proyectos en este espacio.',
+  'projectFlow.workspaceDetail.emptyHeroTitle': 'Crea tu primer proyecto',
+  'projectFlow.workspaceDetail.emptyHeroDescription':
+    'Usa Nuevo proyecto para empezar un diseño. Tras guardar en el escritorio, el archivo queda agrupado en este espacio.',
   'projectFlow.workspaceDetail.moveToDrafts': 'Mover a borradores',
   'projectFlow.workspaceDetail.notInRecents': 'No está en la lista de recientes',
   'projectFlow.workspaceDetail.missing': 'Este espacio de trabajo ya no existe.',
@@ -1190,6 +1195,10 @@ const es: TranslationKeys = {
 
   'projectFlow.localProjects.openUnavailableHint':
     'Abrir desde disco está disponible en la app de escritorio tras guardar el archivo con ruta.',
+
+  'projectFlow.move.trigger': 'Mover a…',
+  'projectFlow.move.toDrafts': 'Borradores',
+  'projectFlow.move.menuAria': 'Mover proyecto a un espacio de trabajo o a borradores',
 
   'projectFlow.library.title': 'Bibliotecas de design system',
   'projectFlow.library.subtitle':
@@ -1237,6 +1246,14 @@ const es: TranslationKeys = {
   'projectFlow.wizardModal.reviewName': 'Nombre del proyecto',
   'projectFlow.wizardModal.reviewSubtitle':
     'Confirma los datos. Puedes volver atrás para cambiar stack o plantilla.',
+  'projectFlow.wizardModal.quickSetupTitle': 'Nuevo proyecto',
+  'projectFlow.wizardModal.quickSetupSubtitle':
+    'Punto de partida: {{mode}} · Define stacks y CMS antes de abrir el editor.',
+  'projectFlow.wizardModal.ideStacksHint':
+    'Los stacks de front coinciden con el IDE de la app (archivos virtuales y codegen).',
+  'projectFlow.wizardModal.cmsProjectLabel': 'Proyecto con CMS',
+  'projectFlow.wizardModal.cmsProjectHint':
+    'Añade páginas editoriales y un proveedor CMS por defecto en los metadatos de codegen.',
   'projectFlow.wizardModal.architect.ai.title': 'Asistente IA',
   'projectFlow.wizardModal.architect.ai.description': 'Construcción conversacional con arquitectura en tiempo real.',
   'projectFlow.wizardModal.architect.figma.title': 'Importar Figma',

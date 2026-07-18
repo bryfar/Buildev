@@ -33,7 +33,9 @@ interface AuthStoreOpts {
   backend: EncryptionBackend;
 }
 
-const PLAINTEXT_HEADER = '__OPENPENCIL_AUTH_PLAINTEXT_V1__';
+const PLAINTEXT_HEADER = '__BUILDEV_AUTH_PLAINTEXT_V1__';
+/** Legacy plaintext marker from older desktop builds (still read for upgrades). */
+const PLAINTEXT_HEADER_LEGACY = '__OPENPENCIL_AUTH_PLAINTEXT_V1__';
 
 /**
  * Build an AuthStore around a file path and an encryption backend. The
@@ -60,8 +62,13 @@ export function createAuthStore(opts: AuthStoreOpts): AuthStore {
       const head = bytes
         .slice(0, Math.min(PLAINTEXT_HEADER.length, bytes.length))
         .toString('utf-8');
+      const headLegacy = bytes
+        .slice(0, Math.min(PLAINTEXT_HEADER_LEGACY.length, bytes.length))
+        .toString('utf-8');
       if (head === PLAINTEXT_HEADER) {
         json = bytes.slice(PLAINTEXT_HEADER.length).toString('utf-8');
+      } else if (headLegacy === PLAINTEXT_HEADER_LEGACY) {
+        json = bytes.slice(PLAINTEXT_HEADER_LEGACY.length).toString('utf-8');
       } else if (backend.isAvailable()) {
         json = backend.decrypt(bytes);
       } else {

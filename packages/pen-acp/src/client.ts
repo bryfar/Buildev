@@ -55,6 +55,8 @@ async function connectLocal(config: AcpAgentConfig): Promise<AcpConnectionState>
   const proc = spawn(config.command, config.args ?? [], {
     stdio: ['pipe', 'pipe', 'pipe'],
     env: { ...process.env, ...config.env },
+    // Windows: .cmd/.ps1 shims and commands like `npx` need a shell to spawn.
+    shell: process.platform === 'win32',
   });
 
   // node:stream toWeb returns ReadableStream<any>; ndJsonStream expects

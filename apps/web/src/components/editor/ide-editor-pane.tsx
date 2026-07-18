@@ -46,7 +46,7 @@ function isAppDarkMode(): boolean {
   return !document.documentElement.classList.contains('light');
 }
 
-function applyOpenpencilMonacoTheme(monaco: typeof import('monaco-editor')) {
+function applyBuildevMonacoTheme(monaco: typeof import('monaco-editor')) {
   const dark = isAppDarkMode();
   const s = getComputedStyle(document.documentElement);
   const bg = cssToHex(s.getPropertyValue('--background')) ?? (dark ? '#252526' : '#fafafa');
@@ -150,7 +150,7 @@ function IdeEditorPane({
           return;
         }
 
-        applyOpenpencilMonacoTheme(monaco);
+        applyBuildevMonacoTheme(monaco);
 
         const ed = monaco.editor.create(host, {
           model,
@@ -186,7 +186,7 @@ function IdeEditorPane({
         });
         setMonacoPhase('ready');
 
-        const syncTheme = () => applyOpenpencilMonacoTheme(monaco);
+        const syncTheme = () => applyBuildevMonacoTheme(monaco);
         const obs = new MutationObserver(syncTheme);
         obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
         offTheme = () => obs.disconnect();

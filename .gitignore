@@ -26,5 +26,7 @@ dist-electron/
 .worktrees/
 .omx/
 .zig-0.15.2/
+.zig-buildev-project-cache/
+.zig-buildev-global-cache/
 .zig-openpencil-project-cache/
 .zig-openpencil-global-cache/

@@ -1,5 +1,5 @@
-import { handleSnapshotLayout } from '@zseven-w/pen-mcp';
-import { handleFindEmptySpace } from '@zseven-w/pen-mcp';
+import { handleSnapshotLayout } from '@buildev/pen-mcp';
+import { handleFindEmptySpace } from '@buildev/pen-mcp';
 import { output } from '../output';
 
 interface GlobalFlags {

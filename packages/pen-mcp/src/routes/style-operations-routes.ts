@@ -5,8 +5,8 @@ import {
   getDocChildren,
   setDocChildren,
 } from '../utils/node-operations';
-import type { PenNode } from '@zseven-w/pen-types';
-import type { PenFill, PenStroke } from '@zseven-w/pen-types';
+import type { PenNode } from '@buildev/pen-types';
+import type { PenFill, PenStroke } from '@buildev/pen-types';
 
 // ---------------------------------------------------------------------------
 // Property helpers

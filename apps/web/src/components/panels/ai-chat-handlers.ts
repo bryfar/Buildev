@@ -21,6 +21,7 @@ import { useCanvasStore } from '@/stores/canvas-store';
 import { useDocumentStore } from '@/stores/document-store';
 import { useDesignMdStore } from '@/stores/design-md-store';
 import { useAgentSettingsStore } from '@/stores/agent-settings-store';
+import { canonicalizeBuiltinProviderConfig } from '@/lib/builtin-provider-presets';
 import { getActivePageChildren } from '@/stores/document-tree-utils';
 import { streamChat } from '@/services/ai/ai-service';
 import { buildChatSystemPrompt } from '@/services/ai/ai-prompts';
@@ -562,8 +563,8 @@ export function useChatHandlers() {
         const builtinProviderId = parts[1];
         const modelName = parts.slice(2).join(':');
 
-        const { builtinProviders } = useAgentSettingsStore.getState();
-        const bp = builtinProviders.find((p) => p.id === builtinProviderId);
+        const rawBp = useAgentSettingsStore.getState().builtinProviders.find((p) => p.id === builtinProviderId);
+        const bp = rawBp ? canonicalizeBuiltinProviderConfig(rawBp) : undefined;
         if (!bp || !bp.apiKey) {
           accumulated = !bp
             ? `**Error:** ${i18n.t('builtin.errorProviderNotFound')}`

@@ -1,5 +1,5 @@
 import type { FigmaNodeChange } from './figma-types';
-import type { ContainerProps, SizingBehavior } from '@zseven-w/pen-types';
+import type { ContainerProps, SizingBehavior } from '@buildev/pen-types';
 
 /**
  * Map Figma stack (auto-layout) properties to PenNode ContainerProps.

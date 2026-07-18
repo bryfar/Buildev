@@ -1,5 +1,5 @@
-import { styleGuideRegistry } from '@zseven-w/pen-ai-skills/_generated/style-guide-registry';
-import { selectStyleGuide, STYLE_GUIDE_TAGS } from '@zseven-w/pen-ai-skills/style-guide';
+import { styleGuideRegistry } from '@buildev/pen-ai-skills/_generated/style-guide-registry';
+import { selectStyleGuide, STYLE_GUIDE_TAGS } from '@buildev/pen-ai-skills/style-guide';
 
 export const STYLE_GUIDE_TOOL_DEFINITIONS = [
   {

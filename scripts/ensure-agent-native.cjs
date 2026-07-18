@@ -13,12 +13,14 @@
 // Build prerequisite: Zig 0.15+ on PATH. CI workflows install it via
 // `mlugg/setup-zig`; local devs install once via their package manager.
 //
-// Set OPENPENCIL_REQUIRE_AGENT_NATIVE=1 to fail the install when the build
-// can't run (electron CI uses this to surface missing prerequisites early).
+// Set BUILDEV_REQUIRE_AGENT_NATIVE=1 (or legacy OPENPENCIL_REQUIRE_AGENT_NATIVE=1) to fail
+// the install when the build can't run (electron CI uses this to surface
+// missing prerequisites early).
 //
-// Set OPENPENCIL_SKIP_AGENT_NATIVE=1 to no-op the script entirely. Useful for
-// workflows (npm publish, lint-only CI) that never load the addon at runtime
-// and would otherwise pay for a Zig build on every install.
+// Set BUILDEV_SKIP_AGENT_NATIVE=1 (or legacy OPENPENCIL_SKIP_AGENT_NATIVE=1) to no-op the
+// script entirely. Useful for workflows (npm publish, lint-only CI) that
+// never load the addon at runtime and would otherwise pay for a Zig build
+// on every install.
 //
 // Set ZIG_TARGET to cross-compile for a non-host triple (e.g. on a macOS arm64
 // runner build for x86_64-macos with `ZIG_TARGET=x86_64-macos`). Without it
@@ -33,7 +35,13 @@ const AGENT_DIR = path.join(__dirname, '..', 'packages', 'agent-native');
 const NAPI_DIR = path.join(AGENT_DIR, 'napi');
 const ZIG_OUT = path.join(AGENT_DIR, 'zig-out', 'napi', 'agent_napi.node');
 const BUNDLED = path.join(NAPI_DIR, 'agent_napi.node');
-const STRICT = process.env.OPENPENCIL_REQUIRE_AGENT_NATIVE === '1';
+
+// True if any of the given env vars is set to the string `1`.
+function envIsOne(...names) {
+  return names.some((n) => process.env[n] === '1');
+}
+
+const STRICT = envIsOne('BUILDEV_REQUIRE_AGENT_NATIVE', 'OPENPENCIL_REQUIRE_AGENT_NATIVE');
 
 function log(msg) {
   console.log(`[agent-native] ${msg}`);
@@ -91,8 +99,11 @@ function buildFromSource() {
 }
 
 function main() {
-  if (process.env.OPENPENCIL_SKIP_AGENT_NATIVE === '1') {
-    log('OPENPENCIL_SKIP_AGENT_NATIVE=1, skipping native binary provisioning.');
+  if (envIsOne('BUILDEV_SKIP_AGENT_NATIVE', 'OPENPENCIL_SKIP_AGENT_NATIVE')) {
+    const which = process.env.BUILDEV_SKIP_AGENT_NATIVE === '1'
+      ? 'BUILDEV_SKIP_AGENT_NATIVE'
+      : 'OPENPENCIL_SKIP_AGENT_NATIVE';
+    log(`${which}=1, skipping native binary provisioning.`);
     return 0;
   }
 

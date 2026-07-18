@@ -5,6 +5,9 @@ import { clearPendingWorkspaceId, peekPendingWorkspaceId } from '@/utils/pending
 
 const STORAGE_KEY = 'buildev-workspace-registry-v1';
 
+/** In-memory / unsaved project card id used by dashboard Drafts + home workspace grid. */
+export const UNASSIGNED_SESSION_PROJECT_KEY = '__session__';
+
 export type BuildevWorkspace = {
   id: string;
   name: string;
@@ -145,4 +148,14 @@ export function assignSavedFileToPendingWorkspace(filePath: string | null, _file
   const projectKey = `path:${norm}`;
   useWorkspaceRegistryStore.getState().assignProjectToWorkspace(projectKey, pending);
   clearPendingWorkspaceId();
+}
+
+/**
+ * When starting a new project from the home dashboard (not from a workspace detail page).
+ * Clears stale pending workspace so the first save does not attach to the wrong workspace,
+ * and removes a session-level assignment so the project counts as Drafts until assigned.
+ */
+export function clearPendingWorkspaceForDashboardNewProject(): void {
+  clearPendingWorkspaceId();
+  useWorkspaceRegistryStore.getState().releaseProject(UNASSIGNED_SESSION_PROJECT_KEY);
 }

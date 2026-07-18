@@ -11,21 +11,17 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { getRecentFiles, relativeTime, type RecentFile } from '@/utils/recent-files';
+import {
+  getUniqueRecentsSortedByLastOpenedDesc,
+  recentFileStableId,
+  relativeTime,
+} from '@/utils/recent-files';
 import { cn } from '@/lib/utils';
 import { tryOpenRecentProjectFile } from '@/utils/open-recent-project';
 import { isElectron } from '@/utils/file-operations';
+import { useWorkspaceRegistryStore } from '@/stores/workspace-registry-store';
 
 const SESSION_PROJECT_VALUE = '__session__';
-
-function normalizePathForId(path: string): string {
-  return path.replace(/\\/g, '/');
-}
-
-function recentProjectId(r: RecentFile): string {
-  if (r.filePath) return `path:${normalizePathForId(r.filePath)}`;
-  return `name:${r.fileName}`;
-}
 
 type SortableRecentRow = {
   item: LocalProjectGridItem;
@@ -49,36 +45,36 @@ export function RecentsPage() {
 
   const navSections = useDashboardNavSections();
 
+  const workspaces = useWorkspaceRegistryStore((s) => s.workspaces);
+  const assignmentByProject = useWorkspaceRegistryStore((s) => s.assignmentByProject);
+  const assignProjectToWorkspace = useWorkspaceRegistryStore((s) => s.assignProjectToWorkspace);
+  const releaseProject = useWorkspaceRegistryStore((s) => s.releaseProject);
+
   const workspaceLabel = projectMeta?.projectName ?? fileName ?? null;
   const sessionCardVisible = Boolean(projectMeta || fileName || isDirty);
-  const normalizedFilePath = filePath ? normalizePathForId(filePath) : null;
+  const normalizedFilePath = filePath ? filePath.replace(/\\/g, '/') : null;
   const sessionId = sessionCardVisible
     ? normalizedFilePath
       ? `path:${normalizedFilePath}`
       : SESSION_PROJECT_VALUE
     : null;
 
-  const recentRaw = getRecentFiles();
-  const recentFiltered = useMemo(() => {
+  const workspacePickerRows = useMemo(
+    () => workspaces.map((w) => ({ id: w.id, name: w.name })),
+    [workspaces],
+  );
+
+  const recentProjectRows = useMemo(() => {
+    const sorted = getUniqueRecentsSortedByLastOpenedDesc();
     const currentPath = filePath ?? null;
-    return recentRaw.filter((r) => {
+    return sorted.filter((r) => {
       if (currentPath && r.filePath && r.filePath === currentPath) return false;
       return true;
     });
-  }, [recentRaw, filePath]);
-
-  const recentProjectRows = useMemo(() => {
-    const byId = new Map<string, RecentFile>();
-    for (const r of recentFiltered) {
-      const id = recentProjectId(r);
-      const prev = byId.get(id);
-      if (!prev || r.lastOpened > prev.lastOpened) byId.set(id, r);
-    }
-    return [...byId.values()];
-  }, [recentFiltered]);
+  }, [filePath]);
 
   const cmsProjectList = useMemo(
-    () => buildCmsProjectList(recentProjectRows, sessionId, projectMeta, fileName, t, recentProjectId),
+    () => buildCmsProjectList(recentProjectRows, sessionId, projectMeta, fileName, t, recentFileStableId),
     [recentProjectRows, sessionId, projectMeta, fileName, t],
   );
   const { navFooterSlot, cmsAside } = useDashboardCmsSidebar(cmsProjectList);
@@ -101,10 +97,12 @@ export function RecentsPage() {
 
   const sortedRows = useMemo((): SortableRecentRow[] => {
     const rows: SortableRecentRow[] = [];
-    const idsFromRecent = new Set(recentProjectRows.map(recentProjectId));
+    const idsFromRecent = new Set(recentProjectRows.map(recentFileStableId));
     for (const r of recentProjectRows) {
-      const id = recentProjectId(r);
+      const id = recentFileStableId(r);
       const canOpen = Boolean(r.filePath && isElectron());
+      const assignedWs = assignmentByProject[id];
+      const showMoveMenu = workspacePickerRows.length > 0 || Boolean(assignedWs);
       rows.push({
         lastOpened: r.lastOpened,
         sortTitle: r.fileName,
@@ -117,15 +115,29 @@ export function RecentsPage() {
             const ok = await tryOpenRecentProjectFile(r);
             if (ok) void navigate({ to: '/editor' });
           },
+          moveMenu: showMoveMenu
+            ? {
+                currentWorkspaceId: assignedWs ?? null,
+                workspaces: workspacePickerRows,
+                onMoveTo: (target) => {
+                  if (target === null) releaseProject(id);
+                  else assignProjectToWorkspace(id, target);
+                },
+              }
+            : undefined,
         },
       });
     }
 
     if (sessionCardVisible && sessionId && !idsFromRecent.has(sessionId)) {
+      const maxRecentOpened =
+        recentProjectRows.length > 0 ? Math.max(...recentProjectRows.map((r) => r.lastOpened)) : 0;
       const title = projectMeta?.projectName ?? fileName ?? t('common.untitled');
       const canOpenSession = !normalizedFilePath ? true : Boolean(isElectron());
+      const assignedSession = assignmentByProject[sessionId];
+      const showSessionMove = workspacePickerRows.length > 0 || Boolean(assignedSession);
       rows.push({
-        lastOpened: Date.now(),
+        lastOpened: maxRecentOpened + 1,
         sortTitle: title,
         item: {
           id: sessionId,
@@ -144,6 +156,16 @@ export function RecentsPage() {
             }
             void navigate({ to: '/editor' });
           },
+          moveMenu: showSessionMove
+            ? {
+                currentWorkspaceId: assignedSession ?? null,
+                workspaces: workspacePickerRows,
+                onMoveTo: (target) => {
+                  if (target === null) releaseProject(sessionId);
+                  else assignProjectToWorkspace(sessionId, target);
+                },
+              }
+            : undefined,
         },
       });
     }
@@ -170,6 +192,10 @@ export function RecentsPage() {
     sortField,
     sortOrder,
     t,
+    assignmentByProject,
+    workspacePickerRows,
+    assignProjectToWorkspace,
+    releaseProject,
   ]);
 
   const gridItems: LocalProjectGridItem[] = useMemo(() => {

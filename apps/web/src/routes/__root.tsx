@@ -75,7 +75,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
   return (
     <html lang={i18n.language} suppressHydrationWarning>
-      <head>
+      {/* Vite dev can reorder/inject head tags vs SSR; avoid noisy hydration mismatches. */}
+      <head suppressHydrationWarning>
         <HeadContent />
       </head>
       <body>

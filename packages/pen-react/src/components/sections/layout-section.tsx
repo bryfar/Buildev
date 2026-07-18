@@ -3,7 +3,7 @@ import { NumberInput } from '../number-input.js';
 import { cn } from '../../ui-primitives.js';
 import { Columns3, Rows3, LayoutGrid, Check } from 'lucide-react';
 import { LayoutPaddingSection, RadioCircle } from './layout-padding-section.js';
-import type { PenNode } from '@zseven-w/pen-types';
+import type { PenNode } from '@buildev/pen-types';
 
 type SizingBehavior = number | string | undefined;
 type ContainerProps = {

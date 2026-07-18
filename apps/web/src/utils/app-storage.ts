@@ -18,7 +18,7 @@
 let cache: Record<string, string> | null = null;
 let initPromise: Promise<void> | null = null;
 
-/** One-time migration from OpenPencil storage keys (web + Electron prefs). */
+/** One-time migration from legacy storage keys (web + Electron prefs). */
 const LEGACY_STORAGE_PAIRS: [string, string][] = [
   ['openpencil-api-base-override', 'buildev-api-base-override'],
   ['openpencil-theme', 'buildev-theme'],
@@ -92,6 +92,19 @@ export async function initAppStorage(): Promise<void> {
         void window.electronAPI?.removePreference(k);
       },
     );
+    // While cache was null, workspace-registry (and other) writes went to
+    // localStorage only. After prefs load, reads use cache and would miss
+    // that data; merge session localStorage so navigation/hydrate does not wipe it.
+    const workspaceRegistryKey = 'buildev-workspace-registry-v1';
+    try {
+      const fromSession = localStorage.getItem(workspaceRegistryKey);
+      if (fromSession && !cache![workspaceRegistryKey]) {
+        cache![workspaceRegistryKey] = fromSession;
+        void window.electronAPI?.setPreference(workspaceRegistryKey, fromSession);
+      }
+    } catch {
+      /* ignore */
+    }
   })();
   return initPromise;
 }

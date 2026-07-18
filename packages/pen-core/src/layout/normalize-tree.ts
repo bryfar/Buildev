@@ -1,4 +1,4 @@
-import type { PenNode, ContainerProps } from '@zseven-w/pen-types';
+import type { PenNode, ContainerProps } from '@buildev/pen-types';
 import { isOverlayNode } from '../node-helpers.js';
 import { inferLayout } from './engine.js';
 

@@ -1,5 +1,5 @@
-import type { PenNode, ContainerProps, SizingBehavior, Padding } from '@zseven-w/pen-types';
-export type { Padding } from '@zseven-w/pen-types';
+import type { PenNode, ContainerProps, SizingBehavior, Padding } from '@buildev/pen-types';
+export type { Padding } from '@buildev/pen-types';
 import { isOverlayNode } from '../node-helpers.js';
 import {
   parseSizing,

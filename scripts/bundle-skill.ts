@@ -5,7 +5,7 @@
  * Resolution order for the skill repo root:
  * 1. `SKILL_ROOT` env (absolute path to the skill repository)
  * 2. `<workspace-parent>/buildev-skill`
- * 3. `<workspace-parent>/openpencil-skill` (legacy clone name)
+ * 3. `<workspace-parent>/` + historical sibling folder name (see `LEGACY_SKILL_SIBLING` below)
  *
  * Usage: bun scripts/bundle-skill.ts
  * Output: apps/cli/src/commands/skill-bundle.json
@@ -16,7 +16,9 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-/** Parent of `openpencil/` (monorepo lives in `openpencil/`). */
+/** Historical sibling folder name for the skill repo (still checked if present). */
+const LEGACY_SKILL_SIBLING = 'openpencil-skill';
+/** Parent of the monorepo directory (sibling skill repos live here). */
 const WORKSPACE_PARENT = resolve(__dirname, '../..');
 
 function resolveSkillRoot(): string | null {
@@ -26,7 +28,7 @@ function resolveSkillRoot(): string | null {
     console.error(`SKILL_ROOT is set but path does not exist: ${p}`);
     return null;
   }
-  for (const dirName of ['buildev-skill', 'openpencil-skill']) {
+  for (const dirName of ['buildev-skill', LEGACY_SKILL_SIBLING]) {
     const p = join(WORKSPACE_PARENT, dirName);
     if (existsSync(p)) return p;
   }
@@ -57,7 +59,9 @@ const FILES = [
 
 function main(): void {
   if (!SKILL_ROOT) {
-    console.error('Skill repo not found. Set SKILL_ROOT or clone next to this repo as buildev-skill or openpencil-skill.');
+    console.error(
+      `Skill repo not found. Set SKILL_ROOT or clone next to this repo as buildev-skill (or sibling folder "${LEGACY_SKILL_SIBLING}" from older clones).`,
+    );
     console.error(`Looked under: ${WORKSPACE_PARENT}`);
     console.error('Skipping skill bundle — install command will use git clone fallback.');
     writeFileSync(OUT, JSON.stringify({ version: '', files: {} }, null, 2) + '\n');

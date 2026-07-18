@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildAnthropicModelsURL,
   buildProviderModelsURL,
   formatFetchError,
   normalizeBaseURL,
@@ -30,6 +31,18 @@ describe('provider-url helpers', () => {
     );
     expect(buildProviderModelsURL('https://ark.cn-beijing.volces.com/api/v3')).toBe(
       'https://ark.cn-beijing.volces.com/api/v3/models',
+    );
+  });
+
+  it('builds Anthropic /v1/models from host-only or path roots', () => {
+    expect(buildAnthropicModelsURL('https://api.anthropic.com')).toBe(
+      'https://api.anthropic.com/v1/models',
+    );
+    expect(buildAnthropicModelsURL('https://api.minimaxi.com/anthropic/')).toBe(
+      'https://api.minimaxi.com/anthropic/v1/models',
+    );
+    expect(buildAnthropicModelsURL('https://api.openai.com/v1')).toBe(
+      'https://api.openai.com/v1/models',
     );
   });
 

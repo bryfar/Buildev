@@ -3,7 +3,7 @@
  *
  * - Set `ZIG` to the full path of `zig.exe` (recommended: Zig **0.15.2**).
  * - Or extract https://ziglang.org/download/0.15.2/zig-x86_64-windows-0.15.2.zip
- *   under `openpencil/.zig-0.15.2/` as either the official inner folder
+ *   under `buildev/.zig-0.15.2/` as either the official inner folder
  *   `zig-x86_64-windows-0.15.2/zig.exe` (next to `lib/`) or a flat extract with `zig.exe` at
  *   `.zig-0.15.2/zig.exe`.
  *
@@ -70,7 +70,7 @@ function defaultProjectCacheDir(zigExe) {
   if (isAbsolute(zigExe) && existsSync(zigExe)) {
     return join(dirname(zigExe), 'zig-build-project-cache');
   }
-  return join(root, '.zig-openpencil-project-cache');
+  return join(root, '.zig-buildev-project-cache');
 }
 
 function defaultGlobalCacheDir(zigExe) {
@@ -81,7 +81,7 @@ function defaultGlobalCacheDir(zigExe) {
   if (isAbsolute(zigExe) && existsSync(zigExe)) {
     return join(dirname(zigExe), 'zig-build-global-cache');
   }
-  return join(root, '.zig-openpencil-global-cache');
+  return join(root, '.zig-buildev-global-cache');
 }
 
 function printWinSpawnHint(projectCacheDir, globalCacheDir) {

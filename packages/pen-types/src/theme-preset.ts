@@ -8,7 +8,7 @@ export interface ThemePreset {
   createdAt: number;
 }
 
-/** `openpencil-theme-preset` is accepted when loading legacy preset files. */
+/** Legacy preset file discriminator string (still accepted when parsing saved files). */
 export type ThemePresetFileType = 'buildev-theme-preset' | 'openpencil-theme-preset';
 
 export interface ThemePresetFile {

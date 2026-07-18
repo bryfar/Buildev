@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { Figma, Github, ImageIcon, LayoutGrid, Sparkles, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type {
   CmsProviderId,
   ProjectBackendStack,
@@ -13,12 +13,7 @@ import type {
 import { useProjectFlowStore } from '@/stores/project-flow-store';
 import { useCanvasStore } from '@/stores/canvas-store';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { confirmUnsavedChanges } from '@/hooks/use-electron-menu';
-import { isElectron, openDocument, openDocumentFS, supportsFileSystemAccess } from '@/utils/file-operations';
-import { parseAndPrepareImportedDocument } from '@/utils/import-pen-document';
-import { useDocumentStore } from '@/stores/document-store';
-
+import { Switch } from '@/components/ui/switch';
 const stackOptions: Array<{ value: ProjectStack; labelKey: string }> = [
   { value: 'react', labelKey: 'projectFlow.stackOption.react' },
   { value: 'vue', labelKey: 'projectFlow.stackOption.vue' },
@@ -68,6 +63,12 @@ const templateOptionsByType: Record<ProjectType, Array<{ value: string; label: s
 
 export type ArchitectChoice = 'ai' | 'figma' | 'reverse' | 'import_json' | 'normal';
 
+/** `choice` matches the dashboard create menu. When `singleStepSetup` is true, one form step then create. */
+export type WizardLaunchPreset = {
+  choice: ArchitectChoice;
+  singleStepSetup?: boolean;
+};
+
 interface NewProjectWizardDialogProps {
   open: boolean;
   onClose: () => void;
@@ -76,8 +77,8 @@ interface NewProjectWizardDialogProps {
    * (SPA) so the new in-memory document is not lost. Prefer passing this from the host route.
    */
   onProjectCreated?: () => void;
-  /** When opening from the dashboard create menu, apply after reset and optionally skip step 0. */
-  launchPreset?: { choice: ArchitectChoice; skipArchitectStep: boolean } | null;
+  /** When opening from the dashboard create menu, applies creation mode from `choice`. */
+  launchPreset?: WizardLaunchPreset | null;
   onLaunchPresetConsumed?: () => void;
 }
 
@@ -103,11 +104,13 @@ export function NewProjectWizardDialog({
   const [cmsProvider, setCmsProvider] = useState<CmsProviderId>('decap');
   const [cmsIntegration, setCmsIntegration] = useState<'none' | CmsProviderId>('none');
   const [templatePreset, setTemplatePreset] = useState('landing-hero');
+  const [flowMode, setFlowMode] = useState<'full' | 'quick'>('full');
 
-  const totalSteps = 3;
+  const totalSteps = flowMode === 'quick' ? 1 : 2;
 
   const resetForm = useCallback(() => {
     setStep(0);
+    setFlowMode('full');
     setArchitectChoice('ai');
     setProjectName('');
     setCreationMode('ai');
@@ -125,7 +128,7 @@ export function NewProjectWizardDialog({
 
   useEffect(() => {
     if (!open || !launchPreset) return;
-    const { choice, skipArchitectStep } = launchPreset;
+    const { choice, singleStepSetup } = launchPreset;
     setArchitectChoice(choice);
     const modeMap: Record<ArchitectChoice, ProjectCreationMode> = {
       ai: 'ai',
@@ -135,9 +138,8 @@ export function NewProjectWizardDialog({
       normal: 'normal',
     };
     setCreationMode(modeMap[choice]);
-    if (skipArchitectStep && choice !== 'figma' && choice !== 'import_json') {
-      setStep(1);
-    }
+    setFlowMode(singleStepSetup ? 'quick' : 'full');
+    setStep(0);
     onLaunchPresetConsumed?.();
   }, [open, launchPreset, onLaunchPresetConsumed]);
 
@@ -168,79 +170,18 @@ export function NewProjectWizardDialog({
   const stackLocked = Boolean(computedPolicy.forcedStack);
   const availableTemplates = templateOptionsByType[effectiveProjectType];
 
-  const handleImportJson = useCallback(async () => {
-    if (!(await confirmUnsavedChanges())) return;
-    const go = () => void router.navigate({ to: '/editor', replace: true });
-    if (isElectron()) {
-      window.electronAPI!.openFile().then((result) => {
-        if (!result) return;
-        try {
-          const name = result.filePath.split(/[/\\]/).pop() || 'untitled.op';
-          const prepared = parseAndPrepareImportedDocument(result.content, {
-            fileName: name,
-            filePath: result.filePath,
-          });
-          if (!prepared) return;
-          useDocumentStore.getState().loadDocument(prepared.doc, name, null, result.filePath);
-          go();
-        } catch {
-          /* invalid */
-        }
-      });
-      return;
-    }
-    if (supportsFileSystemAccess()) {
-      openDocumentFS().then((result) => {
-        if (result) {
-          useDocumentStore.getState().loadDocument(result.doc, result.fileName, result.handle);
-          go();
-        }
-      });
-      return;
-    }
-    openDocument().then((result) => {
-      if (result) {
-        useDocumentStore.getState().loadDocument(result.doc, result.fileName);
-        go();
-      }
-    });
-  }, [router]);
-
-  const handleArchitectContinue = () => {
-    if (architectChoice === 'figma') {
-      onClose();
-      void router.navigate({ to: '/editor', replace: true });
-      queueMicrotask(() => {
-        requestAnimationFrame(() => useCanvasStore.getState().setFigmaImportDialogOpen(true));
-      });
-      return;
-    }
-    if (architectChoice === 'import_json') {
-      onClose();
-      void handleImportJson();
-      return;
-    }
-    const modeMap: Record<ArchitectChoice, ProjectCreationMode> = {
-      ai: 'ai',
-      figma: 'figma',
-      reverse: 'reverse',
-      import_json: 'normal',
-      normal: 'normal',
-    };
-    setCreationMode(modeMap[architectChoice]);
+  const handleFormContinue = (e: FormEvent) => {
+    e.preventDefault();
     setStep(1);
   };
 
-  const handleFormContinue = (e: FormEvent) => {
-    e.preventDefault();
-    setStep(2);
-  };
-
   const handleCreate = () => {
+    if (flowMode === 'quick' && !projectName.trim()) return;
     const pt = effectiveProjectType;
     const cp = pt === 'cms' ? effectiveCmsProvider ?? 'decap' : undefined;
     let st = stack;
     if (pt === 'cms') st = 'astro';
+    const openFigmaAfter = architectChoice === 'figma';
     createProject({
       projectName: projectName.trim() || 'Untitled Project',
       creationMode,
@@ -252,25 +193,23 @@ export function NewProjectWizardDialog({
     });
     if (onProjectCreated) {
       onProjectCreated();
+      if (openFigmaAfter) {
+        queueMicrotask(() => {
+          requestAnimationFrame(() => useCanvasStore.getState().setFigmaImportDialogOpen(true));
+        });
+      }
       return;
     }
     onClose();
     void router.navigate({ to: '/editor', replace: true });
+    if (openFigmaAfter) {
+      queueMicrotask(() => {
+        requestAnimationFrame(() => useCanvasStore.getState().setFigmaImportDialogOpen(true));
+      });
+    }
   };
 
   if (!open) return null;
-
-  const architectCards: Array<{
-    id: ArchitectChoice;
-    icon: ReactNode;
-    recommended?: boolean;
-  }> = [
-    { id: 'ai', icon: <Sparkles size={22} />, recommended: true },
-    { id: 'figma', icon: <Figma size={22} /> },
-    { id: 'reverse', icon: <ImageIcon size={22} /> },
-    { id: 'import_json', icon: <Github size={22} /> },
-    { id: 'normal', icon: <LayoutGrid size={22} /> },
-  ];
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -284,14 +223,18 @@ export function NewProjectWizardDialog({
         <div className="flex items-start justify-between gap-4 border-b border-border/60 px-5 py-4">
           <div>
             <h2 id="new-project-wizard-title" className="text-lg font-semibold tracking-tight">
-              {step === 0
-                ? t('projectFlow.wizardModal.architectTitle')
-                : step === 1
+              {flowMode === 'quick'
+                ? t('projectFlow.wizardModal.quickSetupTitle')
+                : step === 0
                   ? t('projectFlow.wizardModal.createTitle')
                   : t('projectFlow.wizardModal.reviewTitle')}
             </h2>
-            {step === 0 ? (
-              <p className="mt-1 text-sm text-muted-foreground">{t('projectFlow.wizardModal.architectSubtitle')}</p>
+            {flowMode === 'quick' ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t('projectFlow.wizardModal.quickSetupSubtitle', {
+                  mode: t(`projectFlow.wizardModal.architect.${architectChoice}.title`),
+                })}
+              </p>
             ) : null}
             <p className="mt-1 text-xs text-muted-foreground">
               {t('projectFlow.wizardModal.stepOf', { current: step + 1, total: totalSteps })}
@@ -303,46 +246,113 @@ export function NewProjectWizardDialog({
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-5">
-          {step === 0 && (
-            <div className="flex gap-3 overflow-x-auto pb-2 pt-1">
-              {architectCards.map((card) => (
-                <div key={card.id} className="relative shrink-0 w-[140px] sm:w-[150px]">
-                  {card.recommended ? (
-                    <span className="absolute -top-2 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-primary/90 to-primary px-2 py-0.5 text-[9px] font-semibold text-primary-foreground shadow">
-                      {t('projectFlow.wizardModal.recommended')}
-                    </span>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setArchitectChoice(card.id)}
-                    className={cn(
-                      'flex h-full min-h-[168px] w-full flex-col items-center rounded-xl border bg-muted/20 p-3 text-center transition',
-                      architectChoice === card.id
-                        ? 'border-primary ring-1 ring-primary/40'
-                        : 'border-border/80 hover:bg-muted/50',
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        'flex h-12 w-12 items-center justify-center rounded-xl',
-                        architectChoice === card.id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground',
-                      )}
-                    >
-                      {card.icon}
-                    </div>
-                    <span className="mt-3 text-sm font-medium leading-tight">
-                      {t(`projectFlow.wizardModal.architect.${card.id}.title`)}
-                    </span>
-                    <span className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                      {t(`projectFlow.wizardModal.architect.${card.id}.description`)}
-                    </span>
-                  </button>
+          {step === 0 && flowMode === 'quick' && (
+            <form
+              id="create-project-form-quick"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreate();
+              }}
+              className="space-y-5"
+            >
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t('projectFlow.newProject.projectName')}
+                </label>
+                <input
+                  required
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none ring-primary/30 focus-visible:ring-2"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder={t('projectFlow.wizardModal.projectNameExample')}
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t('projectFlow.newProject.frontendStack')}
+                </label>
+                <p className="text-xs text-muted-foreground">{t('projectFlow.wizardModal.ideStacksHint')}</p>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm disabled:opacity-60"
+                  value={computedPolicy.stack}
+                  onChange={(e) => setStack(e.target.value as ProjectStack)}
+                  disabled={stackLocked}
+                >
+                  {stackOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {t(opt.labelKey)}
+                    </option>
+                  ))}
+                </select>
+                {stackLocked ? (
+                  <p className="text-xs text-muted-foreground">{t('projectFlow.newProject.policyAppliedCms', { stack: 'Astro' })}</p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {t('projectFlow.newProject.backendStack')}
+                </label>
+                <select
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                  value={backendStack}
+                  onChange={(e) => setBackendStack(e.target.value as ProjectBackendStack)}
+                >
+                  {backendOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {t(`projectFlow.backend.${opt.value}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border/80 bg-muted/25 px-3 py-3">
+                <div className="min-w-0 space-y-0.5">
+                  <p className="text-sm font-medium leading-snug">{t('projectFlow.wizardModal.cmsProjectLabel')}</p>
+                  <p className="text-xs text-muted-foreground">{t('projectFlow.wizardModal.cmsProjectHint')}</p>
                 </div>
-              ))}
-            </div>
+                <Switch
+                  checked={projectType === 'cms'}
+                  onCheckedChange={(on) => {
+                    if (on) {
+                      setProjectType('cms');
+                      setCmsIntegration('none');
+                      setStack('astro');
+                      setTemplatePreset(templateOptionsByType.cms[0].value);
+                    } else {
+                      setProjectType('landing');
+                      setCmsIntegration('none');
+                      if (stack === 'astro') setStack('react');
+                      setTemplatePreset(templateOptionsByType.landing[0].value);
+                    }
+                  }}
+                />
+              </div>
+
+              {projectType === 'cms' ? (
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t('projectFlow.newProject.cmsProvider')}
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm"
+                    value={cmsProvider}
+                    onChange={(e) => setCmsProvider(e.target.value as CmsProviderId)}
+                  >
+                    {cmsProviderOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {t(`projectFlow.cmsProvider.${opt.value}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </form>
           )}
 
-          {step === 1 && (
+          {step === 0 && flowMode !== 'quick' && (
             <form id="create-project-form" onSubmit={handleFormContinue} className="space-y-5">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -498,7 +508,7 @@ export function NewProjectWizardDialog({
             </form>
           )}
 
-          {step === 2 && (
+          {step === 1 && flowMode !== 'quick' && (
             <div className="space-y-5">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -569,22 +579,17 @@ export function NewProjectWizardDialog({
           <Button type="button" variant="ghost" onClick={onClose}>
             {t('projectFlow.wizardModal.cancel')}
           </Button>
-          {step === 0 ? (
-            <Button type="button" onClick={handleArchitectContinue}>
-              {t('projectFlow.wizardModal.continue')}
+          {step === 0 && flowMode === 'quick' ? (
+            <Button type="submit" form="create-project-form-quick" disabled={!projectName.trim()}>
+              {t('projectFlow.wizard.createProject')}
             </Button>
-          ) : step === 1 ? (
-            <>
-              <Button type="button" variant="outline" onClick={() => setStep(0)}>
-                {t('projectFlow.wizard.back')}
-              </Button>
-              <Button type="submit" form="create-project-form">
-                {t('projectFlow.wizard.next')}
-              </Button>
-            </>
+          ) : step === 0 && flowMode !== 'quick' ? (
+            <Button type="submit" form="create-project-form">
+              {t('projectFlow.wizard.next')}
+            </Button>
           ) : (
             <>
-              <Button type="button" variant="outline" onClick={() => setStep(1)}>
+              <Button type="button" variant="outline" onClick={() => setStep(0)}>
                 {t('projectFlow.wizard.back')}
               </Button>
               <Button type="button" onClick={handleCreate}>
